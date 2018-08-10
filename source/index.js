@@ -222,6 +222,9 @@ export default class ArticleBuilder {
     const dom = new JSDOM(page);
 
     const linked = dom.window.document.querySelectorAll("a img");
+    
+    console.log('linked: ', linked);
+    
     linked.forEach((img, index) => {
       const link = this.closest(img, 'a');
       const container = link.parentNode;
@@ -231,11 +234,15 @@ export default class ArticleBuilder {
 
     const images = dom.window.document.querySelectorAll("img, picture source");
     let downloads = [];
+    
+    console.log('images: ', images);
+    
+    
     images.forEach((element, index) => {
 
       const src = element.getAttribute('src');
       if  (src !== null) {
-        const parsedSource = url.parse(src);
+        const parsedSource = urlParser.parse(src);
         element.setAttribute('src', `images/${parsedSource.pathname.split('/').pop()}`);
         downloads.push(src);
       }
@@ -245,7 +252,7 @@ export default class ArticleBuilder {
         srcset = srcset.split(',').map((item)=>{
           const parts = item.trim().split(' ');
           downloads.push(parts[0]);
-          parts[0] = `images/${url.parse(parts[0]).pathname.split('/').pop()}`;
+          parts[0] = `images/${urlParser.parse(parts[0]).pathname.split('/').pop()}`;
           return parts.join(' ');
         }).join(',');
         element.setAttribute('srcset', srcset);
@@ -277,6 +284,7 @@ export default class ArticleBuilder {
   async create(url, slug=null, author=null) {
     const pages = await this.getArticle(url);
     let content = pages.map(page => (page.content)).reduce((accumulator, page) => (`${accumulator}${page}`));
+    content = await this.downloadImages(content, '');
     content = await this.codepenTransformIFrame(content);
     content = await this.codepenTransform(content);
     const markdown = this.convertToMD(content);
