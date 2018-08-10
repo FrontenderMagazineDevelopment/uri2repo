@@ -1,0 +1,6 @@
+example/*
+lib/*
+*.config.js
+.babelrc.js
+jest.config.js
+*__tests__*
