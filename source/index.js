@@ -2,10 +2,15 @@ import '@babel/polyfill';
 import TurndownService from 'turndown';
 import query from 'query-string';
 import CodepenCravler from './libs/CodepenCravler';
-import download from 'image-downloader';
 const jsdom = require('jsdom');
 const urlParser = require('url');
+const imageType = require('image-type');
+const readChunk = require('read-chunk');
+const path = require('path');
+const fs = require('fs');
+const download = require('download-file');
 const { JSDOM } = jsdom;
+const prettier = require('prettier');
 
 import Mercury from '@frontender-magazine/mercury-sdk';
 
@@ -211,6 +216,32 @@ export default class ArticleBuilder {
 
     return dom.serialize(); 
   }
+  
+  /**
+   * Download image and return filename
+   * @param  {string}  uri     - image uri
+   * @param  {string}  domain  - article domain
+   * @return {Promise<string>} - filename
+   */
+  download = async (uri, domain) => {
+    const isAbsolute = /(^\/\/:)|(^http)/ig.test(uri);
+    const newUrl = isAbsolute ? uri : `${domain}${uri}`;
+    console.log('url to download: ', newUrl);
+    const result = await fetch(newUrl, { method: 'GET' });
+    let name = path.basename(newUrl);
+    const type = result.headers._headers['content-type'][0];
+    const contentType = /([\w]+)\/([\s\w]+)(;[^$]*)?/ig;
+    const matched = contentType.exec(type)
+    if (matched[1] !== 'image') throw new Error('not an image');
+    if(path.extname(newUrl).length < 4) name = name.replace(/.?$/, `.${matched[2]}`);
+    const fileStream = fs.createWriteStream(path.resolve('./tmp', name));
+    return new Promise((resolve, reject) => {
+      result.body.pipe(fileStream);
+      result.body.on("error", reject);
+      fileStream.on("finish", resolve.bind(this, name));
+    });
+  };
+
 
   /**
    * [downloadImages description]
@@ -220,11 +251,8 @@ export default class ArticleBuilder {
    */
   async downloadImages(page, domain) {
     const dom = new JSDOM(page);
-
     const linked = dom.window.document.querySelectorAll("a img");
-    
-    console.log('linked: ', linked);
-    
+
     linked.forEach((img, index) => {
       const link = this.closest(img, 'a');
       const container = link.parentNode;
@@ -234,48 +262,40 @@ export default class ArticleBuilder {
 
     const images = dom.window.document.querySelectorAll("img, picture source");
     let downloads = [];
-    
-    console.log('images: ', images);
-    
-    
-    images.forEach((element, index) => {
 
+    await Promise.all(Array.from(images).map(async (element) => {
       const src = element.getAttribute('src');
       if  (src !== null) {
         const parsedSource = urlParser.parse(src);
-        element.setAttribute('src', `images/${parsedSource.pathname.split('/').pop()}`);
-        downloads.push(src);
+        let name = `${parsedSource.pathname.split('/').pop()}`;
+        try {
+          name = await this.download(src, domain);
+        } catch (error) {
+          console.log('error on src: ', src);
+          console.log('error while downloading: ', error);
+        }
+        
+        element.setAttribute('src', `images/${name}`);
       }
 
       let srcset = element.getAttribute('srcset');
       if (srcset !== null) {
-        srcset = srcset.split(',').map((item)=>{
+        srcset = srcset.split(',').map(async (item)=>{
           const parts = item.trim().split(' ');
-          downloads.push(parts[0]);
-          parts[0] = `images/${urlParser.parse(parts[0]).pathname.split('/').pop()}`;
+          let name = `${urlParser.parse(parts[0]).pathname.split('/').pop()}`;
+          try {
+            name = await this.download(src, domain);
+          } catch (error) {
+            console.log('error on src: ', src);
+            console.log('error while downloading: ', error);
+          }
+          
+          parts[0] = `images/${name}`;
           return parts.join(' ');
         }).join(',');
         element.setAttribute('srcset', srcset);
       }
-
-    });
-
-    downloads = downloads.map((url) => {
-      const isAbsolute = /(^\/\/:)|(^http)/ig.test(url);
-      const newUrl = isAbsolute ? url : `${domain}${url}`;
-      return newUrl;
-    });
-
-    downloads.forEach(url => {
-      try {
-          download({
-            url,
-            dest: '/Users/silentimp/Work/builder/tmp/',
-          });
-      } catch (error) {
-        console.log('error: ', error);
-      } // eslint-disable-line
-    });
+    }));
 
     return dom.window.document.documentElement.outerHTML;
   }
@@ -283,12 +303,24 @@ export default class ArticleBuilder {
 
   async create(url, slug=null, author=null) {
     const pages = await this.getArticle(url);
+    const parsed = path.parse(url);
+    let domain;
+    if (parsed.ext !== '') {
+      domain = `${parsed.dir}/`;
+    } else {
+      domain = `${url}/`;
+    }
     let content = pages.map(page => (page.content)).reduce((accumulator, page) => (`${accumulator}${page}`));
-    content = await this.downloadImages(content, '');
+    content = await this.downloadImages(content, domain);
     content = await this.codepenTransformIFrame(content);
     content = await this.codepenTransform(content);
     const markdown = this.convertToMD(content);
-    return markdown;
+    return prettier.format(markdown, {
+      parser: "markdown",
+      printWidth: 80,
+      tabWidth: 2,
+      useTabs: false,
+    });
   }
 } 
 
