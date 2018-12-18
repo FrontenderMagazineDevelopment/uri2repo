@@ -5,7 +5,7 @@ import Mercury from '@frontender-magazine/mercury-sdk';
 import shajs from 'sha.js';
 import sharp from 'sharp';
 import rimraf from 'rimraf';
-import Algorithmia from 'algorithmia';
+// import Algorithmia from 'algorithmia';
 
 import jsdom from 'jsdom';
 import urlParser from 'url';
@@ -16,6 +16,7 @@ import flatten from 'array-flatten';
 // import pager from './__mock__/page.js';
 import CodepenCravler from './libs/CodepenCravler';
 import GitHubUtils from './libs/GitHubUtils';
+import TagExtractor from './libs/TagExtractor';
 
 const { JSDOM } = jsdom;
 const prettier = require('prettier');
@@ -38,33 +39,24 @@ export default class ArticleBuilder {
    * @constructor
    */
   constructor() {
-    if (!fs.existsSync(ArticleBuilder.TMP_DIR_NAME)) fs.mkdirSync(ArticleBuilder.TMP_DIR_NAME);
-  }
+    this.gitHubUtils = new GitHubUtils();
 
-  /**
-   * Get article from mercury service
-   * @param  {string}  url - url of page
-   * @return {Promise<string>} - markdown
-   */
-  getArticle = async (url) => {
-    const parser = new Mercury(process.env.MERCURY_KEY);
-    return parser.getAll(url);
-  }
+    this.html = {
+      original: null,
+      mercury: null,
+    };
 
+    this.dom = {
+      original: null,
+      mercury: null,
+      matched: null,
+    };
 
-  /**
-   * getArticleDOM - get article DOM
-   *
-   * @param {string} url - article url
-   *
-   * @return {DOM} article DOM
-   */
-  async getArticleDOM(url) {
-    const response = await fetch(url);
-    this.html = await response.text();
-    const dom = new JSDOM(this.html);
+    this.mercury = null;
 
-    return dom;
+    this.url = null;
+
+    this.markdown = null;
   }
 
   /**
@@ -115,14 +107,13 @@ export default class ArticleBuilder {
 
   /**
    * convertToMD - convert to markdown
-   * @param  {[type]} page [description]
-   * @return {[type]}      [description]
    */
-  convertToMD(page) {
+  convertToMD(dom) {
     const turndownService = new TurndownService({
       codeBlockStyle: 'fenced',
       fence: '~~~',
       linkStyle: 'referenced',
+      headingStyle: 'atx',
     });
     turndownService.keep(['picture']);
     turndownService.remove([
@@ -136,54 +127,6 @@ export default class ArticleBuilder {
       'button',
       'textarea',
     ]);
-
-    // code
-    // turndownService.addRule('fencedCodeBlock', {
-    //   filter(node, options) {
-    //     return (
-    //       options.codeBlockStyle === 'fenced'
-    //       && node.nodeName === 'PRE'
-    //       && node.firstChild
-    //       && node.firstChild.nodeName === 'CODE'
-    //     );
-    //   },
-    //   replacement: (content, node, options) => {
-    //     const className = node.firstChild.className || '';
-    //     const language = (className.match(/language-(\S+)/) || [null, ''])[1];
-    //     const parsers = {
-    //       typescript: 'typescript',
-    //       flow: 'flow',
-    //       javascript: 'babylon',
-    //       less: 'less',
-    //       scss: 'scss',
-    //       css: 'css',
-    //       json: 'json',
-    //       markdown: 'markdown',
-    //       html: 'html',
-    //       yaml: 'yaml',
-    //     };
-    //     let code = node.firstChild.textContent;
-    //     if (parsers[language] === undefined) {
-    //       code = this.prettifyWithFirstThatWork(code);
-    //     } else {
-    //       try {
-    //         code = prettier.format(code, {
-    //           parser: parsers[language],
-    //           printWidth: 80,
-    //           tabWidth: 2,
-    //           useTabs: false,
-    //         });
-    //       } catch (error) {
-    //         code = this.prettifyWithFirstThatWork(code);
-    //       }
-    //     }
-    //     return `
-    //     ${options.fence}${language}
-    //     ${code}
-    //     ${options.fence}
-    //     `;
-    //   },
-    // });
 
     // iframe
     turndownService.addRule('iframe', {
@@ -200,34 +143,41 @@ export default class ArticleBuilder {
         return (node.nodeName === 'IMG');
       },
       replacement: (content, node) => {
-        const src = node.getAttribute('src');
+        let src = node.getAttribute('src');
         const ext = src.split(/#|\?/)[0].split('.').pop().trim();
         const srcWebp = src.replace(ext, 'webp');
         const srcset = node.getAttribute('srcset');
         const sizes = node.getAttribute('sizes');
         const alt = node.getAttribute('alt');
 
+        if (decodeURI(src).trim().indexOf(' ') > -1) {
+          [src] = src.split(' ');
+        }
+
+        if (decodeURI(src).trim().indexOf(',') > -1) {
+          [src] = src.split(',');
+        }
+
         const sourceSrcsetWebP = srcset
           ? `
   <source
     type="image/webp"${sizes ? `
-    sizes="${sizes}"` : ''}
-    srcset="${srcset.replace(new RegExp(ext, 'g'), 'webp')}" />
+    sizes="${decodeURI(sizes)}"` : ''}
+    srcset="${decodeURI(srcset.replace(new RegExp(ext, 'g'), 'webp'))}" />
 ` : '';
         const sourceSrcWebP = srcWebp
           ? `
   <source
     type="image/webp"${sizes ? `
-    sizes="${sizes}"` : ''}
-    srcset="${srcWebp}" />
+    sizes="${decodeURI(sizes)}"` : ''}
+    srcset="${decodeURI(srcWebp)}" />
 ` : '';
         const sourceIMG = src
           ? `
-  <img
-    decoding="async"
-    src="${src}"${sizes ? `
-    sizes="${sizes}"` : ''}${srcset ? `
-    srcset="${srcset}"` : ''}${alt ? `
+  <img decoding="async"
+    src="${decodeURI(src)}"${sizes ? `
+    sizes="${decodeURI(sizes)}"` : ''}${srcset ? `
+    srcset="${decodeURI(srcset)}"` : ''}${alt ? `
     alt="${alt}"` : ''} />
 ` : '';
 
@@ -260,7 +210,7 @@ export default class ArticleBuilder {
 
     // use gfm
     turndownService.use(turndownPluginGfm.gfm);
-    let markdown = turndownService.turndown(page);
+    let markdown = turndownService.turndown(dom.window.document.documentElement.outerHTML);
 
     // replace images and get sources
     let index = 0;
@@ -291,8 +241,8 @@ export default class ArticleBuilder {
 
   /**
    * Get data from codepen as block
-   * @param  {[type]} node [description]
-   * @return {[type]}      [description]
+   * @param  {node} node node from which you want to get params
+   * @return {object} object containing attributes
    */
   getData = (node) => {
     const data = {};
@@ -328,13 +278,13 @@ export default class ArticleBuilder {
    * @param  {string}  html - string with page source
    * @return {Promise} - promise will resolve with string containing modified page source
    */
-  codepenTransformIFrame = async (html) => {
-    const dom = new JSDOM(html);
-    const elements = dom.window.document.querySelectorAll("iframe[src*='//codepen.io/']");
+  codepenTransformIFrame = async () => new Promise(async (resolve) => {
+    const elements = this.dom.mercury.window.document.querySelectorAll("iframe[src*='//codepen.io/']");
     const dataList = [];
     const pens = [];
 
-    if (elements.length === 0) return html;
+    if (elements.length === 0) return resolve(this);
+
     Array.prototype.slice.call(elements).forEach((element) => {
       const data = this.getDataIframe(element.getAttribute('src'));
       dataList.push(data);
@@ -358,21 +308,19 @@ export default class ArticleBuilder {
       nodes[i].setAttribute('data-user', 'FMRobot');
       nodes[i].setAttribute('data-slug-hash', parsed.pathname.split('/').pop());
     }
-
-    return dom.serialize();
-  }
+    return resolve(this);
+  });
 
   /**
    * Get all block codepens fork them to FMRobot account and replace links
    * @param  {[type]}  html [description]
    * @return {Promise}      [description]
    */
-  codepenTransform = async (html) => {
-    const dom = new JSDOM(html);
-    const elements = dom.window.document.querySelectorAll('p.codepen');
+  codepenTransform = async () => {
+    const elements = this.dom.mercury.window.document.querySelectorAll('p.codepen');
     const pens = [];
 
-    if (elements.length === 0) return html;
+    if (elements.length === 0) return this;
 
     Array.prototype.slice.call(elements).forEach((element) => {
       const data = this.getData(element);
@@ -393,7 +341,7 @@ export default class ArticleBuilder {
       nodes[i].setAttribute('data-slug-hash', parsed.pathname.split('/').pop());
     }
 
-    return dom.serialize();
+    return this;
   }
 
   /**
@@ -494,13 +442,10 @@ export default class ArticleBuilder {
 
   /**
    * [downloadImages description]
-   * @param  {[type]}  page   [description]
-   * @param  {[type]}  domain [description]
    * @return {Promise}        [description]
    */
-  async downloadImages(page, domain) {
-    const dom = new JSDOM(page);
-    const linked = dom.window.document.querySelectorAll('a img');
+  async downloadImages() {
+    const linked = this.dom.mercury.window.document.querySelectorAll('a img');
 
     linked.forEach((img) => {
       const link = img.closest('a');
@@ -508,7 +453,7 @@ export default class ArticleBuilder {
       link.remove();
     });
 
-    const images = dom.window.document.querySelectorAll('img, picture source');
+    const images = this.dom.mercury.window.document.querySelectorAll('img, picture source');
 
     const downloadsList = Array.from(images).map((element) => {
       let src = element.getAttribute('src');
@@ -523,7 +468,7 @@ export default class ArticleBuilder {
         srcset = decodeURI(srcset).replace(/[\s]+/ig, ' ').trim();
 
         if ((src === srcset) && this.isMercury) {
-          const img = this.dom.window.document.querySelector(`img[src][srcset*="${decodeURI(element.getAttribute('src')).split(',')[0]}"]`);
+          const img = this.dom.mercury.window.document.querySelector(`img[src][srcset*="${decodeURI(element.getAttribute('src')).split(',')[0]}"]`);
 
           if (img !== null) {
             element.setAttribute('src', img.getAttribute('src'));
@@ -544,17 +489,23 @@ export default class ArticleBuilder {
     });
 
     const list = [...new Set(flatten(downloadsList))];
-    const downloads = list.map(async url => this.download(url, domain));
+    const downloads = list.map(async url => this.download(url, this.domain));
     const names = await Promise.all(downloads);
-    let html = dom.window.document.documentElement.outerHTML;
+    let html = this.dom.mercury.window.document.documentElement.outerHTML;
     names.forEach(({ oldName, newName }) => {
       html = html.replace(new RegExp(oldName, 'g'), newName);
     });
+    this.dom.mercury = new JSDOM(html);
 
-    return html;
+    return this;
   }
 
-  getSlug = (title, parsed) => {
+  /**
+   * parseSlug - get slug for repository
+   */
+  parseSlug = () => {
+    const { title } = this.mercury[0];
+    const parsed = path.parse(this.url);
     const titleSlug = title.toLowerCase().replace(/[?!;.,']+/ig, '').replace(/[^a-z]+/ig, '-').trim();
 
     if (titleSlug.length > 0) return titleSlug;
@@ -570,71 +521,21 @@ export default class ArticleBuilder {
     return nameSlug;
   }
 
-  identifyCodeSnippets = async (page) => {
-    const dom = new JSDOM(page);
-    const snippets = dom.window.document.querySelectorAll('pre>code');
-    const improbable = [
-      'vb',
-      'c++',
-      'c',
-      'c#',
-      'objective-c',
-      'swift',
-      'java',
-      'lua',
-      'scala',
-      'r',
-      'ruby',
-      'perl',
-      'haskell',
-      'python',
-      'php',
-    ];
-
-    const languageResolve = Array.from(snippets).map((snippet) => {
-      const className = snippet.className || '';
-      const language = (className.match(/language-(\S+)/) || [null, ''])[1];
-      if (language.length > 0) return snippet;
-      return new Promise((resolve) => {
-        Algorithmia.client('simXk8TZz3s0uyyXlZLA0c4L+sW1')
-          .algo('PetiteProgrammer/ProgrammingLanguageIdentification/0.1.3')
-          .pipe(snippet.textContent)
-          .then((response) => {
-            if (response.error !== undefined) resolve('');
-            const probable = response.result.filter(lang => !improbable.includes(lang[0]));
-            console.log(response);
-            console.log(probable);
-            console.log(`
-
-            ${snippet.textContent}
-            language: ${probable[0][0]}
-            
-            --------------------------------------
-            `);
-            snippet.classList.add(`language-${probable[0][0]}`);
-            resolve(probable[0][0]);
-          });
-      });
-    });
-
-    await Promise.all(languageResolve);
-
-    return dom.window.document.documentElement.outerHTML;
-  }
-
-  restoreCodeSnippets = (page) => {
-    if (this.container === null) return page;
-    const dom = new JSDOM(page);
-    const mercuryCodeBlocks = dom.window.document.querySelectorAll('pre>code');
-    const originalCodeBlocks = this.container.querySelectorAll('pre>code');
-
+  restoreCodeSnippets = () => {
+    if (this.container === null) return this;
+    const mercuryCodeBlocks = this.dom.mercury.window.document.querySelectorAll('pre>code');
+    const originalCodeBlocks = this.dom.matched.querySelectorAll('pre>code');
     mercuryCodeBlocks.forEach((block, index) => {
       block.replaceWith(originalCodeBlocks[index]);
     });
-
-    return dom.window.document.documentElement.outerHTML;
+    return this;
   }
 
+  /**
+   * @method getNodeSelector
+   * @param {node} element to build selector from
+   * @return {string} css selector builded from id, class and atributes
+   */
   getNodeSelector = (element) => {
     const tag = element.tagName.toLowerCase();
     const id = element.getAttribute('id');
@@ -647,22 +548,20 @@ export default class ArticleBuilder {
     return `${tag}${id ? `#${id}` : ''}${classname ? `.${classname}` : ''}${attributesSelector || ''}`;
   }
 
-  cleanDisqus = (page) => {
-    const dom = new JSDOM(page);
-    Array.from(dom.window.document.querySelectorAll('[class*="disqus"],[class*="dsq-"],[id*="disqus"]'))
+  cleanDisqus = () => {
+    Array.from(this.dom.mercury.window.document.querySelectorAll('[class*="disqus"],[class*="dsq-"],[id*="disqus"]'))
       .forEach((node) => {
         if (node) node.parentNode.removeChild(node);
       });
-    return dom.window.document.documentElement.outerHTML;
+    return this;
   }
 
-  cleanHidden = (page) => {
-    const dom = new JSDOM(page);
-    Array.from(dom.window.document.querySelectorAll('[hidden],[style*="display:none"],[style*="display: none"]'))
+  cleanHidden = () => {
+    Array.from(this.dom.mercury.window.document.querySelectorAll('[hidden],[style*="display:none"],[style*="display: none"]'))
       .forEach((node) => {
         if (node) node.parentNode.removeChild(node);
       });
-    Array.from(dom.window.document.querySelectorAll('[style]'))
+    Array.from(this.dom.mercury.window.document.querySelectorAll('[style]'))
       .forEach((node) => {
         if (
           node
@@ -675,29 +574,48 @@ export default class ArticleBuilder {
           node.parentNode.removeChild(node);
         }
       });
-    return dom.window.document.documentElement.outerHTML;
+    return this;
   }
 
-  async create(url, slug = null) {
-    this.isMercury = true;
-    this.dom = await this.getArticleDOM(url);
-    const pages = await this.getArticle(url);
-    const parsed = path.parse(url);
-    let content = pages.map(page => (page.content)).reduce((accumulator, page) => (`${accumulator}${page}`));
+  /**
+   * Get article from mercury service
+   * @param  {string}  url - url of page
+   * @return {Promise<string>} - markdown
+   */
+  getMercuryArticle = async (url) => {
+    const parser = new Mercury(process.env.MERCURY_KEY);
+    this.mercury = await parser.getAll(url);
+    const html = this.mercury.map(page => (page.content)).reduce((accumulator, page) => (`${accumulator}${page}`));
+    this.html.mercury = html;
+    this.dom.mercury = new JSDOM(this.html.mercury);
+    return this;
+  }
 
-    const mercuryPage = new JSDOM(content);
-    const body = mercuryPage.window.document.querySelector('body');
-    const bodyFetch = this.dom.window.document.querySelector('body');
-    const element = body.firstChild;
+  /**
+   * getArticleDOM - get article DOM
+   *
+   * @param {string} url - article url
+   *
+   * @return {DOM} article DOM
+   */
+  async getOriginalArticle(url) {
+    const response = await fetch(url);
+    this.html.original = await response.text();
+    this.dom.original = new JSDOM(this.html.original);
+    return this;
+  }
+
+  getSource = async () => (Promise.all([
+    this.getMercuryArticle(this.url),
+    this.getOriginalArticle(this.url),
+  ]));
+
+  matchContainer() {
+    const element = this.dom.mercury.window.document.querySelector('body').firstChild;
     const selector = this.getNodeSelector(element);
-    let container = bodyFetch.querySelectorAll(selector);
-
-    this.container = null;
-
+    let container = this.dom.original.window.document.querySelectorAll(selector);
     if (container.length === 1) {
-      // this.isMercury = false;
-      // content = container[0].outerHTML;
-      [this.container] = container;
+      [this.dom.matched] = container;
     } else if (container.length > 0) {
       container = Array.from(container);
       const selectors = Array.from(element.childNodes)
@@ -710,67 +628,115 @@ export default class ArticleBuilder {
             kid => (!selectors.include(this.getNodeSelector(kid))),
           ) === undefined));
       if (container.length === 1) {
-        // this.isMercury = false;
-        // content = container[0].outerHTML;
-        [this.container] = container;
+        [this.dom.matched] = container;
       }
     }
+    return this;
+  }
 
-    let domain;
+  getDomain = () => {
+    const parsed = path.parse(this.url);
     if (parsed.ext !== '') {
-      domain = `${parsed.dir}/`;
+      this.domain = `${parsed.dir}/`;
     } else {
-      domain = `${url}/`;
+      this.domain = `${this.url}/`;
     }
+    return this;
+  };
 
-    this.slug = slug || this.getSlug(pages[0].title, parsed);
-    const articleDIR = path.resolve(ArticleBuilder.TMP_DIR_NAME, this.slug);
-    const articleImagesDIR = path.resolve(articleDIR, ArticleBuilder.TMP_IMAGE_DIR_NAME);
-    if (!fs.existsSync(articleDIR)) fs.mkdirSync(articleDIR);
-    if (!fs.existsSync(articleImagesDIR)) fs.mkdirSync(articleImagesDIR);
+  getSlug = () => {
+    this.slug = this.slug || this.parseSlug();
+    return this;
+  };
 
-    // console.log(`
+  createTMPDir = () => {
+    this.articleDIR = path.resolve(ArticleBuilder.TMP_DIR_NAME, this.slug);
+    this.articleImagesDIR = path.resolve(this.articleDIR, ArticleBuilder.TMP_IMAGE_DIR_NAME);
+    if (!fs.existsSync(ArticleBuilder.TMP_DIR_NAME)) fs.mkdirSync(ArticleBuilder.TMP_DIR_NAME);
+    if (!fs.existsSync(this.articleDIR)) fs.mkdirSync(this.articleDIR);
+    if (!fs.existsSync(this.articleImagesDIR)) fs.mkdirSync(this.articleImagesDIR);
+    return this;
+  };
 
-    //   ${content}
+  createMarkdown = () => {
+    const html = this.convertToMD(this.dom.mercury);
 
-    // `);
-
-    content = this.cleanDisqus(content);
-    content = this.cleanHidden(content);
-    content = this.restoreCodeSnippets(content);
-    // content = await this.identifyCodeSnippets(content);
-    content = await this.downloadImages(content, domain);
-    content = await this.codepenTransformIFrame(content);
-    content = await this.codepenTransform(content);
-    content = this.convertToMD(content);
-
-    content = prettier.format(content, {
+    prettier.format(html, {
       parser: 'markdown',
       printWidth: 80,
       tabWidth: 2,
       useTabs: false,
     });
 
+    this.markdown = html;
+
     // html source converted to markdown
     fs.writeFileSync(path.resolve(
       ArticleBuilder.TMP_DIR_NAME,
       this.slug,
       'eng.md',
-    ), content);
+    ), html);
 
     // translation dummy
     fs.writeFileSync(path.resolve(
       ArticleBuilder.TMP_DIR_NAME,
       this.slug,
       'rus.md',
-    ), content);
+    ), html);
 
-    const gitHubUtils = new GitHubUtils();
-    await gitHubUtils.createRepo(this.slug, pages[0].title);
-    await gitHubUtils.uploadDir(articleDIR);
-    rimraf.sync(articleDIR);
+    return this;
+  };
 
-    // return content;
+  createREADME = () => {
+    fs.writeFileSync(path.resolve(
+      ArticleBuilder.TMP_DIR_NAME,
+      this.slug,
+      'README.md',
+    ), this.mercury[0].excerpt);
+  }
+
+  createRepo = async () => this.gitHubUtils.createRepo(this.slug, this.mercury[0].title);
+
+  upload = async () => this.gitHubUtils.uploadDir(this.articleDIR);
+
+  clearTMPDir = async () => {
+    rimraf.sync(this.articleDIR);
+    return this;
+  }
+
+  createCard = async () => {
+    await this.gitHubUtils.createCard(this.mercury[0].title, this.tags);
+    return this;
+  }
+
+  getTags = async () => {
+    const tags = await new TagExtractor(this.markdown);
+    this.tags = tags;
+    return this;
+  }
+
+  async create(url, slug = null) {
+    this.url = url;
+    this.slug = slug;
+
+    await this.getSource();
+    this.matchContainer();
+    this.getDomain();
+    this.getSlug();
+    this.createTMPDir();
+    this.restoreCodeSnippets();
+    this.cleanDisqus();
+    this.cleanHidden();
+    await this.downloadImages();
+    await this.codepenTransformIFrame();
+    await this.codepenTransform();
+    this.createREADME();
+    this.createMarkdown();
+    await this.getTags();
+    await this.createRepo();
+    await this.upload();
+    await this.createCard(this.title);
+    this.clearTMPDir();
   }
 }
 

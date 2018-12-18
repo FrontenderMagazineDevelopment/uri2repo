@@ -15,6 +15,10 @@ export default class GitHubUtils {
 
   static MESSAGE_FILE = 'Adding file ';
 
+  static PROJECT_NAME = 'Перевод';
+
+  static COLUMN_NAME = 'Запланировано';
+
   /**
    * constructor - authentificate on github
    * @constructor
@@ -45,12 +49,66 @@ export default class GitHubUtils {
       has_wiki: false,
     };
     this.repo = slug;
-    return this.octokit.repos.createForOrg(options);
+    return this.octokit.repos.createInOrg(options);
   }
 
   setRepo = (slug) => {
     this.repo = slug;
   }
+
+  getProjectsList = async () => {
+    const projects = await this.octokit.projects.listForOrg({ org: GitHubUtils.ORG_NAME });
+    this.project = projects.data.find(project => (project.name === GitHubUtils.PROJECT_NAME));
+    if (this.project === undefined) throw new Error('Project lost');
+    return this.project;
+  };
+
+  getColumnsList = async (id) => {
+    const columns = await this.octokit.projects.listColumns({ project_id: id });
+    this.column = columns.data.find(column => (column.name === GitHubUtils.COLUMN_NAME));
+    if (this.column === undefined) throw new Error('Column lost');
+    return this.column;
+  };
+
+  /**
+   * createIssue — create github issue for repository
+   * @param {string} title - issue title
+   * @param {string} body - issue body
+   * @param {object} - issue body
+   */
+  createIssue = async (title, body = '', tags = []) => {
+    const issueBody = body || `
+- [ ] Перевод
+- [ ] Вычитка
+- [ ] Очередь на публикацию
+- [ ] Опубликован
+`;
+    const issue = await this.octokit.issues.create({
+      owner: GitHubUtils.ORG_NAME,
+      repo: this.repo,
+      title,
+      body: issueBody,
+      // assignee,
+      // milestone,
+      labels: tags,
+      // assignees
+    });
+    return issue;
+  };
+
+  createCard = async (title, tags = []) => {
+    const project = await this.getProjectsList();
+    const column = await this.getColumnsList(project.id);
+    const issue = await this.createIssue(title, null, tags);
+    const card = await this.octokit.projects.createCard({
+      column_id: column.id,
+      // note: title,
+      content_id: issue.data.id,
+      content_type: 'Issue',
+    });
+
+    return card;
+  };
 
   readdir = (uri) => {
     const files = fs.readdirSync(uri, { withFileTypes: true });
