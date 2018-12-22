@@ -34,7 +34,6 @@ class ArticleBuilder {
       'github:after',
       'after',
     ];
-
     this.skip = {
       plugins: [
         // 'TMPDir',
