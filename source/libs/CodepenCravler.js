@@ -3,48 +3,48 @@ const Joi = require('joi');
 
 /**
  * Class to fork pens
- * 
+ *
  * @class CodepenCravler
  * @throws Error — if not all data was set
  */
-export default class CodepenCravler {
-    
+class CodepenCravler {
   /**
-   * Constructor set up some 
+   * Constructor set up some
    * @param {Array | string } pens - array of pen urls or string with pen url
    * @param {string} login - github login
    * @param {string} passw - password of github
    *
    * @throws {Error} - JOI attribute validation error message
-   * @return {Promise<Array> | Promise<string>} - promise with array or string, depending on pens argument type
+   * @return {Promise<Array> | Promise<string>} - promise with array or string,
+   * depending on pens argument type
    */
-  constructor ({ 
-    pens, 
-    login, 
-    passw
+  constructor({
+    pens,
+    login,
+    passw,
   }) {
     const schema = Joi.object().keys({
       login: Joi.string().required(),
       passw: Joi.string().required(),
       pens: Joi.alternatives(
-        Joi.array().items(Joi.string().uri({scheme: 'https'})).min(1).required(), 
-        Joi.string().uri({scheme: 'https'}).required()
+        Joi.array().items(Joi.string().uri({ scheme: 'https' })).min(1).required(),
+        Joi.string().uri({ scheme: 'https' }).required(),
       ),
     });
-    
+
     const result = Joi.validate({
       login,
       passw,
       pens,
     }, schema);
-    
+
     if (result.error !== null) throw new Error(result.false);
-    
+
     this.GITHUB_LOGIN = login;
     this.GITHUB_PASSW = passw;
     this.pens = pens;
 
-    this.CODEPEN_LOGIN = "#login-button";
+    this.CODEPEN_LOGIN = '#login-button';
     this.GITHUB_SUBMIT = "input[type='submit']";
     this.GITHUB_RELOGIN = '#js-oauth-authorize-btn';
     this.GITHUB_SELECTOR = '#login-with-github';
@@ -53,27 +53,28 @@ export default class CodepenCravler {
     this.CODEPEN_PAGE = '#init-data';
     this.FORK_SELECTOR = '#fork';
     this.CODEPEN_PROFILE = '#mini-personal-avatar';
-    
+
     return this.forkPens();
   }
-  
+
   /**
    * Fork pens
-   * @return {Promise<Array> | Promise<string>} - promise with array or string, depending on pens argument type
+   * @return {Promise<Array> | Promise<string>} - promise with array or string,
+   * depending on pens argument type
    */
-  forkPens = async () => {
-    this.browser = await puppeteer.launch({headless: true});
+  async forkPens() {
+    this.browser = await puppeteer.launch({ headless: true });
     this.page = await this.browser.newPage();
     this.page.goto('https://codepen.io/');
     this.page.waitForSelector(this.CODEPEN_LOGIN).then(this.githubLogin);
     this.page.waitForSelector(this.GITHUB_RELOGIN).then(this.githubReAuth);
     return this.page.waitForSelector(this.CODEPEN_PROFILE).then(this.fork);
   }
-  
+
   /**
    * Actions list to login on github
    */
-  githubLogin = async () => {
+  async githubLogin() {
     await this.page.click(this.CODEPEN_LOGIN);
     await this.page.waitForSelector(this.GITHUB_SELECTOR);
     await this.page.click(this.GITHUB_SELECTOR);
@@ -85,11 +86,11 @@ export default class CodepenCravler {
     await this.page.click(this.GITHUB_SUBMIT);
     this.page.waitForSelector(this.CODEPEN_LOGIN).then(this.githubLogin);
   }
-  
+
   /**
    * If you need another auth step on github this function runs
    */
-  githubReAuth = async () => {
+  async githubReAuth() {
     await this.page.waitFor(1000);
     await this.page.click(this.FORK_SELECTOR);
     this.page.waitForSelector(this.GITHUB_RELOGIN).then(this.githubReAuth);
@@ -100,7 +101,7 @@ export default class CodepenCravler {
    * @param  {string}  url - pen url
    * @return {Promise<string>} - promise with new forked pen uri
    */
-  forkPen = async (url) => {
+  async forkPen(url) {
     await this.page.goto(url);
     await this.page.waitForSelector(this.FORK_SELECTOR);
     await this.page.click(this.FORK_SELECTOR);
@@ -110,20 +111,22 @@ export default class CodepenCravler {
 
   /**
    * fork pens list
-   * @return {Promise<Array> | Promise<string>} - promise with array or string, depending on pens argument type
+   * @return {Promise<Array> | Promise<string>} - promise with array or string,
+   * depending on pens argument type
    */
-  fork = async () => {
+  async fork() {
     if (Array.isArray(this.pens)) {
-      let forks = [];
-      for (let pen of this.pens) {
-        forks.push(await this.forkPen(pen));
-      }
+      const forks = await this.pens.map(async (pen) => {
+        const fork = await this.forkPen(pen);
+        return fork;
+      });
       this.browser.close();
       return forks;
-    } else if (typeof this.pens === 'string') {
-      const uri = await this.forkPen(this.pens);
-      this.browser.close();
-      return uri;
     }
+    const uri = await this.forkPen(this.pens);
+    this.browser.close();
+    return uri;
   }
 }
+
+module.exports = { CodepenCravler };

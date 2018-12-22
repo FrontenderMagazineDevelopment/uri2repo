@@ -1,742 +1,85 @@
-import '@babel/polyfill';
-import TurndownService from 'turndown';
-import query from 'query-string';
-import Mercury from '@frontender-magazine/mercury-sdk';
-import shajs from 'sha.js';
-import sharp from 'sharp';
-import rimraf from 'rimraf';
-// import Algorithmia from 'algorithmia';
+/* eslint-disable class-methods-use-this */
+require('@babel/polyfill');
 
-import jsdom from 'jsdom';
-import urlParser from 'url';
-import path from 'path';
-import fs from 'fs';
-import flatten from 'array-flatten';
-
-// import pager from './__mock__/page.js';
-import CodepenCravler from './libs/CodepenCravler';
-import GitHubUtils from './libs/GitHubUtils';
-import TagExtractor from './libs/TagExtractor';
-
-const { JSDOM } = jsdom;
-const prettier = require('prettier');
+const path = require('path');
+const fs = require('fs');
+const flatten = require('array-flatten');
 
 require('dotenv').config({ path: '../.env' });
-const turndownPluginGfm = require('turndown-plugin-gfm');
 
 /**
  * ArticleBuilder
  * @class
  * @namespace
  */
-export default class ArticleBuilder {
-  static TMP_DIR_NAME = './tmp';
-
-  static TMP_IMAGE_DIR_NAME = './images';
-
+class ArticleBuilder {
   /**
    * constructor creates tmp directory if it not created yet
    * @constructor
    */
   constructor() {
-    this.gitHubUtils = new GitHubUtils();
-
-    this.html = {
-      original: null,
-      mercury: null,
-    };
-
-    this.dom = {
-      original: null,
-      mercury: null,
-      matched: null,
-    };
-
-    this.mercury = null;
-
-    this.url = null;
-
-    this.markdown = null;
+    ArticleBuilder.TMP_DIR_NAME = './tmp';
+    ArticleBuilder.TMP_IMAGE_DIR_NAME = './images';
+    this.stages = [
+      'before',
+      'resource:before',
+      'resource',
+      'resource:after',
+      'metadata:before',
+      'metadata',
+      'metadata:after',
+      'mutation:before',
+      'mutation',
+      'mutation:after',
+      'github:before',
+      'github',
+      'github:after',
+      'after',
+    ];
   }
 
-  /**
-   * prettifyWithFirstThatWork - Just interate thru parsers until one of them work
-   *
-   * @param {string} code - string with code snippet
-   *
-   * @return {string} - string with prettified or unchanged code snippet
-   */
-  prettifyWithFirstThatWork = (code) => {
-    const parsersList = [
-      'typescript',
-      'flow',
-      'babylon',
-      'less',
-      'scss',
-      'css',
-      'json5',
-      'json',
-      'graphql',
-      'mdx',
-      'angular',
-      'vue',
-      'html',
-      'yaml',
-      'markdown',
-    ].reverse(); // @todo reorder array and remove reverse
-
-    let index = parsersList.length;
-    let cleaned = code;
-
-    // eslint-disable-next-line no-plusplus
-    while (index--) {
-      try {
-        cleaned = prettier.format(code, {
-          parser: parsersList[index],
-          printWidth: 80,
-          tabWidth: 2,
-          useTabs: false,
-        });
-        break;
-      // eslint-disable-next-line no-empty
-      } catch (error) {}
-    }
-
-    return cleaned;
-  }
-
-  /**
-   * convertToMD - convert to markdown
-   */
-  convertToMD(dom) {
-    const turndownService = new TurndownService({
-      codeBlockStyle: 'fenced',
-      fence: '~~~',
-      linkStyle: 'referenced',
-      headingStyle: 'atx',
-    });
-    turndownService.keep(['picture']);
-    turndownService.remove([
-      'form',
-      'style',
-      'script',
-      'fieldset',
-      'noscript',
-      'legend',
-      'input',
-      'button',
-      'textarea',
-    ]);
-
-    // iframe
-    turndownService.addRule('iframe', {
-      filter(node) {
-        return ((node.nodeName === 'IFRAME')
-          && (node.getAttribute('src').indexOf('//codepen.io/') === -1));
-      },
-      replacement: (content, node) => node.outerHTML,
-    });
-
-    // adaptive images
-    turndownService.addRule('img', {
-      filter(node) {
-        return (node.nodeName === 'IMG');
-      },
-      replacement: (content, node) => {
-        let src = node.getAttribute('src');
-        const ext = src.split(/#|\?/)[0].split('.').pop().trim();
-        const srcWebp = src.replace(ext, 'webp');
-        const srcset = node.getAttribute('srcset');
-        const sizes = node.getAttribute('sizes');
-        const alt = node.getAttribute('alt');
-
-        if (decodeURI(src).trim().indexOf(' ') > -1) {
-          [src] = src.split(' ');
-        }
-
-        if (decodeURI(src).trim().indexOf(',') > -1) {
-          [src] = src.split(',');
-        }
-
-        const sourceSrcsetWebP = srcset
-          ? `
-  <source
-    type="image/webp"${sizes ? `
-    sizes="${decodeURI(sizes)}"` : ''}
-    srcset="${decodeURI(srcset.replace(new RegExp(ext, 'g'), 'webp'))}" />
-` : '';
-        const sourceSrcWebP = srcWebp
-          ? `
-  <source
-    type="image/webp"${sizes ? `
-    sizes="${decodeURI(sizes)}"` : ''}
-    srcset="${decodeURI(srcWebp)}" />
-` : '';
-        const sourceIMG = src
-          ? `
-  <img decoding="async"
-    src="${decodeURI(src)}"${sizes ? `
-    sizes="${decodeURI(sizes)}"` : ''}${srcset ? `
-    srcset="${decodeURI(srcset)}"` : ''}${alt ? `
-    alt="${alt}"` : ''} />
-` : '';
-
-        return `
-<picture>${sourceSrcsetWebP}${sourceSrcWebP}${sourceIMG}</picture>
-`;
-      },
-    });
-
-    // codepen blocks as iframe or block
-    turndownService.addRule('codepenScript', {
-      filter(node) {
-        return (
-          (
-            (node.nodeName === 'P')
-            && (node.classList.contains('codepen'))
-          )
-          || (
-            (node.nodeName === 'IFRAME')
-            && (node.getAttribute('src').indexOf('//codepen.io/') > -1)
-          )
-        );
-      },
-      replacement: (content, node) => {
-        const data = this.getData(node);
-        const search = query.stringify(data);
-        return `\n\n[codepen=//codepen.io/${data.user}/pen/${data['slug-hash']}?${search}]\n\n`;
-      },
-    });
-
-    // use gfm
-    turndownService.use(turndownPluginGfm.gfm);
-    let markdown = turndownService.turndown(dom.window.document.documentElement.outerHTML);
-
-    // replace images and get sources
-    let index = 0;
-    let sources = '';
-    markdown = markdown.replace(/!\[([^\]]*)\]\(([^)]*)\)/igm, (match, alt, source) => {
-      index += 1;
-      sources = `${sources}\n[image-${index}]: ${source}`;
-      return `!◐${alt}◑[image-${index}]`;
-    });
-
-    markdown = `${markdown}\n\n${sources}`;
-
-    // replace links
-    index = 0;
-    sources = '';
-    markdown = markdown.replace(/([^!])\[([^\]]*)\]\(([^)]*)\)/igm, (match, space, alt, source) => {
-      index += 1;
-      sources = `${sources}\n[${index}]: ${source}`;
-      return `${space}[${alt}](${index})`;
-    });
-
-    // replace images to normal forms
-    markdown = markdown.replace(/◐/igm, '[').replace(/◑/igm, ']');
-
-    // return markdown;
-    return `${markdown}\n\n${sources}`;
-  }
-
-  /**
-   * Get data from codepen as block
-   * @param  {node} node node from which you want to get params
-   * @return {object} object containing attributes
-   */
-  getData = (node) => {
-    const data = {};
-    if (node.getAttribute('data-theme-id')) data['theme-id'] = node.getAttribute('data-theme-id');
-    if (node.getAttribute('data-slug-hash')) data['slug-hash'] = node.getAttribute('data-slug-hash');
-    if (node.getAttribute('data-default-tab')) data['default-tab'] = node.getAttribute('data-default-tab');
-    if (node.getAttribute('data-user')) data.user = node.getAttribute('data-user');
-    if (node.getAttribute('data-embed-version')) data['embed-version'] = node.getAttribute('data-embed-version');
-    if (node.getAttribute('data-pen-title')) data['pen-title'] = node.getAttribute('data-pen-title');
-    return data;
-  }
-
-  /**
-   * Get data from codepen as iframe
-   * @param  {[type]} uri [description]
-   * @return {[type]}     [description]
-   */
-  getDataIframe = (uri) => {
-    const parsed = urlParser.parse(uri, true, true);
-    const matched = parsed.pathname.match(/\/([^/]+)\/embed\/([^/]+)(\/)?/i);
-    const user = matched[1];
-    const slug = matched[2];
-    const data = {
-      ...parsed.query,
-      user,
-      'slug-hash': slug,
-    };
-    return data;
-  }
-
-  /**
-   * Get all iframes codepens fork them to FMRobot account and replace links
-   * @param  {string}  html - string with page source
-   * @return {Promise} - promise will resolve with string containing modified page source
-   */
-  codepenTransformIFrame = async () => new Promise(async (resolve) => {
-    const elements = this.dom.mercury.window.document.querySelectorAll("iframe[src*='//codepen.io/']");
-    const dataList = [];
-    const pens = [];
-
-    if (elements.length === 0) return resolve(this);
-
-    Array.prototype.slice.call(elements).forEach((element) => {
-      const data = this.getDataIframe(element.getAttribute('src'));
-      dataList.push(data);
-      pens.push(`https://codepen.io/${data.user}/pen/${data['slug-hash']}/`);
-    });
-
-    const forks = await new CodepenCravler({
-      login: process.env.GITHUB_LOGIN,
-      passw: process.env.GITHUB_PASSW,
-      pens,
-    });
-
-    for (let i = 0; i < forks.length; i += 1) {
-      const fork = forks[i];
-      const data = dataList[i];
-      const nodes = Array.from(elements);
-      const parsed = urlParser.parse(fork, true, true);
-      Array.prototype.slice.call(data).forEach((attribute) => {
-        nodes[i].setAttribute(`data-${attribute}`, data[attribute]);
-      });
-      nodes[i].setAttribute('data-user', 'FMRobot');
-      nodes[i].setAttribute('data-slug-hash', parsed.pathname.split('/').pop());
-    }
-    return resolve(this);
-  });
-
-  /**
-   * Get all block codepens fork them to FMRobot account and replace links
-   * @param  {[type]}  html [description]
-   * @return {Promise}      [description]
-   */
-  codepenTransform = async () => {
-    const elements = this.dom.mercury.window.document.querySelectorAll('p.codepen');
-    const pens = [];
-
-    if (elements.length === 0) return this;
-
-    Array.prototype.slice.call(elements).forEach((element) => {
-      const data = this.getData(element);
-      pens.push(`https://codepen.io/${data.user}/pen/${data['slug-hash']}/`);
-    });
-
-    const forks = await new CodepenCravler({
-      login: process.env.GITHUB_LOGIN,
-      passw: process.env.GITHUB_PASSW,
-      pens,
-    });
-
-    for (let i = 0; i < forks.length; i += 1) {
-      const fork = forks[i];
-      const nodes = Array.from(elements);
-      const parsed = urlParser.parse(fork, true, true);
-      nodes[i].setAttribute('data-user', 'FMRobot');
-      nodes[i].setAttribute('data-slug-hash', parsed.pathname.split('/').pop());
-    }
-
-    return this;
-  }
-
-  /**
-   * Download image and return filename
-   * @param  {string}  uri     - image uri
-   * @param  {string}  domain  - article domain
-   * @return {Promise<string>} - filename
-   */
-  download = async (uri, domain) => {
-    const isAbsolute = /(^\/\/:)|(^http)/ig.test(uri);
-    const newUrl = isAbsolute ? uri : `${domain}${uri}`;
-    const result = await fetch(newUrl, { method: 'GET' });
-    const parsedSource = urlParser.parse(newUrl);
-
-    const hex = shajs('sha256').update(newUrl).digest('hex');
-    const name = `${decodeURI(parsedSource.pathname).replace(/(.*)[?\s]+.*/ig, '$1').split('/').pop()}`;
-
-    // eslint-disable-next-line no-underscore-dangle
-    const type = result.headers._headers['content-type'][0];
-    const contentType = /([\w]+)\/([\s\w]+)(;[^$]*)?/ig;
-    const matched = contentType.exec(type);
-    if (matched[1] !== 'image') throw new Error('not an image');
-    const resultName = `${hex}_${name.replace(/\.[a-z]+$/ig, '')}.${matched[2]}`;
-
-    const DIR = path.resolve(
-      ArticleBuilder.TMP_DIR_NAME,
-      this.slug,
-      ArticleBuilder.TMP_IMAGE_DIR_NAME,
-    );
-
-    const fileStream = fs.createWriteStream(path.resolve(DIR, resultName));
-    return new Promise((resolve) => {
-      result.body.pipe(fileStream);
-      fileStream.on('finish', async () => {
-        const answer = {
-          oldName: uri,
-          newName: `images/${resultName}`,
-        };
-        if (matched[2] !== 'webp') {
-          const resultNameWebp = `${hex}_${name.replace(/\.[a-z]+$/ig, '')}.webp`;
-          await sharp(path.resolve(DIR, resultName))
-            .webp()
-            .toFile(path.resolve(DIR, resultNameWebp));
-          answer.webpName = resultNameWebp;
-        }
-
-        resolve(answer);
-      });
-    });
-  };
-
-  closest = (element, selector) => {
-    if (element.matches(selector)) return element;
-    if (element.parentNode === null) return null;
-    return this.closest(element.parentNode, selector);
-  }
-
-  /**
-   * getURLSFromString - transform string from attributes src and srcset
-   *
-   * @param {string} url Description
-   * @method
-   *
-   * @return {array} array with urls
-   */
-  getURLSFromString = (url) => {
-    const ulrs = [];
-    const parts = url.split(',');
-    let index = parts.length;
-    let acc = null;
-    let part = null;
-
-    // eslint-disable-next-line no-plusplus
-    while (index--) {
-      part = decodeURI(parts[index]).trim().replace(/(.*)[?\s]+.*/ig, '$1');
-      const isPartURL = /(^\/)|(^\.\/)|(^\.\.\/)|(^http)/ig.test(part);
-      const isAccURL = /(^\/)|(^\.\/)|(^\.\.\/)|(^http)/ig.test(acc);
-      if (isAccURL && isPartURL) {
-        ulrs.push(part, acc);
-        acc = null;
-      } else if (isAccURL && !isPartURL) {
-        ulrs.push(acc);
-        acc = part;
-      } else if (!isAccURL && isPartURL) {
-        if (typeof acc === 'string') {
-          ulrs.push(`${part},${acc}`);
-          acc = null;
-        } else {
-          ulrs.push(part);
-        }
-      } else if (!isAccURL && !isPartURL) {
-        acc = (typeof acc === 'string') ? `${part},${acc}` : part;
+  pluginCollector(uri, plugins = []) {
+    const files = fs.readdirSync(uri, { withFileTypes: true });
+    return flatten(files.map((file) => {
+      const fileURI = path.resolve(uri, file.name);
+      if (file.isDirectory()) {
+        return this.pluginCollector(fileURI);
       }
-    }
-
-    return ulrs;
-  }
-
-  /**
-   * [downloadImages description]
-   * @return {Promise}        [description]
-   */
-  async downloadImages() {
-    const linked = this.dom.mercury.window.document.querySelectorAll('a img');
-
-    linked.forEach((img) => {
-      const link = img.closest('a');
-      link.before(img);
-      link.remove();
-    });
-
-    const images = this.dom.mercury.window.document.querySelectorAll('img, picture source');
-
-    const downloadsList = Array.from(images).map((element) => {
-      let src = element.getAttribute('src');
-      let srcset = element.getAttribute('srcset');
-      const downloads = [];
-
-      if (
-        (src !== null)
-        && (srcset !== null)
-      ) {
-        src = decodeURI(src).replace(/[\s]+/ig, ' ').trim();
-        srcset = decodeURI(srcset).replace(/[\s]+/ig, ' ').trim();
-
-        if ((src === srcset) && this.isMercury) {
-          const img = this.dom.mercury.window.document.querySelector(`img[src][srcset*="${decodeURI(element.getAttribute('src')).split(',')[0]}"]`);
-
-          if (img !== null) {
-            element.setAttribute('src', img.getAttribute('src'));
-          }
-        }
-      }
-
-      if (src !== null) {
-        const urls = [...new Set(this.getURLSFromString(src))];
-        downloads.push(urls);
-      }
-      if (srcset !== null) {
-        const urls = [...new Set(this.getURLSFromString(srcset))];
-        downloads.push(urls);
-      }
-
-      return downloads;
-    });
-
-    const list = [...new Set(flatten(downloadsList))];
-    const downloads = list.map(async url => this.download(url, this.domain));
-    const names = await Promise.all(downloads);
-    let html = this.dom.mercury.window.document.documentElement.outerHTML;
-    names.forEach(({ oldName, newName }) => {
-      html = html.replace(new RegExp(oldName, 'g'), newName);
-    });
-    this.dom.mercury = new JSDOM(html);
-
-    return this;
-  }
-
-  /**
-   * parseSlug - get slug for repository
-   */
-  parseSlug = () => {
-    const { title } = this.mercury[0];
-    const parsed = path.parse(this.url);
-    const titleSlug = title.toLowerCase().replace(/[?!;.,']+/ig, '').replace(/[^a-z]+/ig, '-').trim();
-
-    if (titleSlug.length > 0) return titleSlug;
-
-    const isHRU = !parsed.base.indexOf('.');
-    const splitetURL = parsed.dir.split(/[\\/]/ig);
-    let nameSlug;
-    if (isHRU || splitetURL.length < 2) {
-      nameSlug = parsed.name;
-    } else {
-      nameSlug = splitetURL.pop();
-    }
-    return nameSlug;
-  }
-
-  restoreCodeSnippets = () => {
-    if (this.container === null) return this;
-    const mercuryCodeBlocks = this.dom.mercury.window.document.querySelectorAll('pre>code');
-    const originalCodeBlocks = this.dom.matched.querySelectorAll('pre>code');
-    mercuryCodeBlocks.forEach((block, index) => {
-      block.replaceWith(originalCodeBlocks[index]);
-    });
-    return this;
-  }
-
-  /**
-   * @method getNodeSelector
-   * @param {node} element to build selector from
-   * @return {string} css selector builded from id, class and atributes
-   */
-  getNodeSelector = (element) => {
-    const tag = element.tagName.toLowerCase();
-    const id = element.getAttribute('id');
-    const classname = element.getAttribute('class').split(' ').join('.');
-    let attributesSelector = '';
-    const skipAttr = ['class', 'id'];
-    for (let i = element.attributes.length - 1; i >= 0; i -= 1) {
-      if (!skipAttr.includes(element.attributes[i].name)) attributesSelector += `[${element.attributes[i].name}="${element.attributes[i].value}"]`;
-    }
-    return `${tag}${id ? `#${id}` : ''}${classname ? `.${classname}` : ''}${attributesSelector || ''}`;
-  }
-
-  cleanDisqus = () => {
-    Array.from(this.dom.mercury.window.document.querySelectorAll('[class*="disqus"],[class*="dsq-"],[id*="disqus"]'))
-      .forEach((node) => {
-        if (node) node.parentNode.removeChild(node);
-      });
-    return this;
-  }
-
-  cleanHidden = () => {
-    Array.from(this.dom.mercury.window.document.querySelectorAll('[hidden],[style*="display:none"],[style*="display: none"]'))
-      .forEach((node) => {
-        if (node) node.parentNode.removeChild(node);
-      });
-    Array.from(this.dom.mercury.window.document.querySelectorAll('[style]'))
-      .forEach((node) => {
-        if (
-          node
-          && (
-            (node.style.display === 'none')
-            || (node.style.visibility === 'hidden')
-            || (parseFloat(node.style.opacity) === 0)
-          )
-        ) {
-          node.parentNode.removeChild(node);
-        }
-      });
-    return this;
-  }
-
-  /**
-   * Get article from mercury service
-   * @param  {string}  url - url of page
-   * @return {Promise<string>} - markdown
-   */
-  getMercuryArticle = async (url) => {
-    const parser = new Mercury(process.env.MERCURY_KEY);
-    this.mercury = await parser.getAll(url);
-    const html = this.mercury.map(page => (page.content)).reduce((accumulator, page) => (`${accumulator}${page}`));
-    this.html.mercury = html;
-    this.dom.mercury = new JSDOM(this.html.mercury);
-    return this;
-  }
-
-  /**
-   * getArticleDOM - get article DOM
-   *
-   * @param {string} url - article url
-   *
-   * @return {DOM} article DOM
-   */
-  async getOriginalArticle(url) {
-    const response = await fetch(url);
-    this.html.original = await response.text();
-    this.dom.original = new JSDOM(this.html.original);
-    return this;
-  }
-
-  getSource = async () => (Promise.all([
-    this.getMercuryArticle(this.url),
-    this.getOriginalArticle(this.url),
-  ]));
-
-  matchContainer() {
-    const element = this.dom.mercury.window.document.querySelector('body').firstChild;
-    const selector = this.getNodeSelector(element);
-    let container = this.dom.original.window.document.querySelectorAll(selector);
-    if (container.length === 1) {
-      [this.dom.matched] = container;
-    } else if (container.length > 0) {
-      container = Array.from(container);
-      const selectors = Array.from(element.childNodes)
-        .filter(node => (node.nodeType === 1))
-        .map(this.getNodeSelector);
-      container.filter(node => (
-        Array.from(node.childNodes)
-          .filter(child => (child.nodeType !== Node.TEXT_NODE))
-          .find(
-            kid => (!selectors.include(this.getNodeSelector(kid))),
-          ) === undefined));
-      if (container.length === 1) {
-        [this.dom.matched] = container;
-      }
-    }
-    return this;
-  }
-
-  getDomain = () => {
-    const parsed = path.parse(this.url);
-    if (parsed.ext !== '') {
-      this.domain = `${parsed.dir}/`;
-    } else {
-      this.domain = `${this.url}/`;
-    }
-    return this;
-  };
-
-  getSlug = () => {
-    this.slug = this.slug || this.parseSlug();
-    return this;
-  };
-
-  createTMPDir = () => {
-    this.articleDIR = path.resolve(ArticleBuilder.TMP_DIR_NAME, this.slug);
-    this.articleImagesDIR = path.resolve(this.articleDIR, ArticleBuilder.TMP_IMAGE_DIR_NAME);
-    if (!fs.existsSync(ArticleBuilder.TMP_DIR_NAME)) fs.mkdirSync(ArticleBuilder.TMP_DIR_NAME);
-    if (!fs.existsSync(this.articleDIR)) fs.mkdirSync(this.articleDIR);
-    if (!fs.existsSync(this.articleImagesDIR)) fs.mkdirSync(this.articleImagesDIR);
-    return this;
-  };
-
-  createMarkdown = () => {
-    const html = this.convertToMD(this.dom.mercury);
-
-    prettier.format(html, {
-      parser: 'markdown',
-      printWidth: 80,
-      tabWidth: 2,
-      useTabs: false,
-    });
-
-    this.markdown = html;
-
-    // html source converted to markdown
-    fs.writeFileSync(path.resolve(
-      ArticleBuilder.TMP_DIR_NAME,
-      this.slug,
-      'eng.md',
-    ), html);
-
-    // translation dummy
-    fs.writeFileSync(path.resolve(
-      ArticleBuilder.TMP_DIR_NAME,
-      this.slug,
-      'rus.md',
-    ), html);
-
-    return this;
-  };
-
-  createREADME = () => {
-    fs.writeFileSync(path.resolve(
-      ArticleBuilder.TMP_DIR_NAME,
-      this.slug,
-      'README.md',
-    ), this.mercury[0].excerpt);
-  }
-
-  createRepo = async () => this.gitHubUtils.createRepo(this.slug, this.mercury[0].title);
-
-  upload = async () => this.gitHubUtils.uploadDir(this.articleDIR);
-
-  clearTMPDir = async () => {
-    rimraf.sync(this.articleDIR);
-    return this;
-  }
-
-  createCard = async () => {
-    await this.gitHubUtils.createCard(this.mercury[0].title, this.tags);
-    return this;
-  }
-
-  getTags = async () => {
-    const tags = await new TagExtractor(this.markdown);
-    this.tags = tags;
-    return this;
+      plugins.push(fileURI);
+      return plugins;
+    }));
   }
 
   async create(url, slug = null) {
-    this.url = url;
-    this.slug = slug;
+    const article = {
+      url,
+      slug,
+      assignees: ['silentimp'],
+      TMP_DIR_NAME: ArticleBuilder.TMP_DIR_NAME,
+      TMP_IMAGE_DIR_NAME: ArticleBuilder.TMP_IMAGE_DIR_NAME,
+    };
+    let plugins = this.pluginCollector(path.resolve('./source/plugins'));
+    // eslint-disable-next-line import/no-dynamic-require, global-require
+    plugins = plugins.map(uri => (require(uri)));
 
-    await this.getSource();
-    this.matchContainer();
-    this.getDomain();
-    this.getSlug();
-    this.createTMPDir();
-    this.restoreCodeSnippets();
-    this.cleanDisqus();
-    this.cleanHidden();
-    await this.downloadImages();
-    await this.codepenTransformIFrame();
-    await this.codepenTransform();
-    this.createREADME();
-    this.createMarkdown();
-    await this.getTags();
-    await this.createRepo();
-    await this.upload();
-    await this.createCard(this.title);
-    this.clearTMPDir();
+    const result = await flatten(this.stages
+      .filter(stage => (plugins
+        .filter(plugin => (
+          (plugin[stage] !== undefined)
+          && (typeof plugin[stage] === 'function'))).length > 0))
+      .map(stage => (
+        plugins
+          .filter(plugin => (
+            (plugin[stage] !== undefined)
+            && (typeof plugin[stage] === 'function')))
+          .sort((pluginA, pluginB) => (pluginA.meta.dependency.includes(pluginB.meta.name) ? 1 : 0))
+          .map(plugin => (plugin[stage]))
+      ))).reduce(async (state, plugin) => {
+      const resolvedState = await state;
+      return plugin(resolvedState);
+    }, article);
+
+    console.log(result);
   }
 }
 

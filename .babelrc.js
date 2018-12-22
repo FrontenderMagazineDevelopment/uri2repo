@@ -3,9 +3,7 @@ module.exports = {
     ["@babel/preset-env", {
         "targets": {
           "node": "current",
-          "browsers": ["> 3%", "ie 11"]
         },
-        modules: 'umd',
         debug: false,
     }],
   ],
@@ -17,6 +15,12 @@ module.exports = {
       "legacy": true
     }],
     "@babel/plugin-proposal-optional-chaining",
-    "@babel/plugin-proposal-export-default-from"
+    "@babel/plugin-proposal-export-default-from",
+    ["module-resolver", {
+      "alias": {
+        "libs": "./source/libs",
+        "plugins": "./source/plugins",
+      }
+    }]
   ],
 };

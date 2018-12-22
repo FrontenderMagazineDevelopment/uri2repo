@@ -1,30 +1,27 @@
-import Octokit from '@octokit/rest';
-import fs from 'fs';
-import path from 'path';
-import flatten from 'array-flatten';
+/* eslint-disable class-methods-use-this */
+const Octokit = require('@octokit/rest');
+const fs = require('fs');
+const path = require('path');
+const flatten = require('array-flatten');
 
 /**
 * GitHubUtils - Description
 * @namespace
 * @class
 */
-export default class GitHubUtils {
-  static ORG_NAME = 'FrontenderMagazine';
-
-  static DOMAIN_NAME = 'https://frontender.info/';
-
-  static MESSAGE_FILE = 'Adding file ';
-
-  static PROJECT_NAME = 'Перевод';
-
-  static COLUMN_NAME = 'Запланировано';
-
+class GitHubUtils {
   /**
    * constructor - authentificate on github
    * @constructor
    * @param {string | null} token - github app token
    */
   constructor(token = null) {
+    GitHubUtils.ORG_NAME = 'FrontenderMagazine';
+    GitHubUtils.DOMAIN_NAME = 'https://frontender.info/';
+    GitHubUtils.MESSAGE_FILE = 'Adding file ';
+    GitHubUtils.PROJECT_NAME = 'Перевод';
+    GitHubUtils.COLUMN_NAME = 'Запланировано';
+
     this.octokit = Octokit();
     this.octokit.authenticate({
       type: 'token',
@@ -37,7 +34,7 @@ export default class GitHubUtils {
    * @param {string} slug - repo name
    * @param {string} title — repo description
    */
-  createRepo = async (slug, title) => {
+  async createRepo(slug, title) {
     const options = {
       org: GitHubUtils.ORG_NAME,
       name: slug,
@@ -52,23 +49,23 @@ export default class GitHubUtils {
     return this.octokit.repos.createInOrg(options);
   }
 
-  setRepo = (slug) => {
+  setRepo(slug) {
     this.repo = slug;
   }
 
-  getProjectsList = async () => {
+  async getProjectsList() {
     const projects = await this.octokit.projects.listForOrg({ org: GitHubUtils.ORG_NAME });
     this.project = projects.data.find(project => (project.name === GitHubUtils.PROJECT_NAME));
     if (this.project === undefined) throw new Error('Project lost');
     return this.project;
-  };
+  }
 
-  getColumnsList = async (id) => {
+  async getColumnsList(id) {
     const columns = await this.octokit.projects.listColumns({ project_id: id });
     this.column = columns.data.find(column => (column.name === GitHubUtils.COLUMN_NAME));
     if (this.column === undefined) throw new Error('Column lost');
     return this.column;
-  };
+  }
 
   /**
    * createIssue — create github issue for repository
@@ -76,14 +73,19 @@ export default class GitHubUtils {
    * @param {string} body - issue body
    * @param {object} - issue body
    */
-  createIssue = async (title, body = '', tags = []) => {
+  async createIssue(url, title, body = '', tags = [], assignees = []) {
+    // @todo добавить ссылку на статью и репозиторий в таск
     const issueBody = body || `
 - [ ] Перевод
 - [ ] Вычитка
 - [ ] Очередь на публикацию
 - [ ] Опубликован
+
+[Ссылка на репозиторий](https://github.com/${GitHubUtils.ORG_NAME}/${this.repo}/)
+[Ссылка на оригинальную статью](${url})
+[Ссылка на перевод после публикации](https://frontender.info/${this.repo}/)
 `;
-    const issue = await this.octokit.issues.create({
+    const options = {
       owner: GitHubUtils.ORG_NAME,
       repo: this.repo,
       title,
@@ -91,26 +93,26 @@ export default class GitHubUtils {
       // assignee,
       // milestone,
       labels: tags,
-      // assignees
-    });
+      assignees,
+    };
+    const issue = await this.octokit.issues.create(options);
     return issue;
-  };
+  }
 
-  createCard = async (title, tags = []) => {
+  async createCard(url, title, tags = [], assignees = []) {
     const project = await this.getProjectsList();
     const column = await this.getColumnsList(project.id);
-    const issue = await this.createIssue(title, null, tags);
+    const issue = await this.createIssue(url, title, null, tags, assignees);
     const card = await this.octokit.projects.createCard({
       column_id: column.id,
       // note: title,
       content_id: issue.data.id,
       content_type: 'Issue',
     });
-
     return card;
-  };
+  }
 
-  readdir = (uri) => {
+  readdir(uri) {
     const files = fs.readdirSync(uri, { withFileTypes: true });
     return flatten(files.map((file) => {
       const fileURI = path.resolve(uri, file.name);
@@ -121,12 +123,12 @@ export default class GitHubUtils {
     }));
   }
 
-  base64Encode = (uri) => {
+  base64Encode(uri) {
     const file = fs.readFileSync(uri);
     return Buffer.from(file).toString('base64');
   }
 
-  upload = (uri) => {
+  upload(uri) {
     const content = this.base64Encode(uri);
     const folders = uri.split(path.sep);
     const index = folders.lastIndexOf(this.repo);
@@ -140,21 +142,25 @@ export default class GitHubUtils {
       content,
     };
     return options;
-  };
+  }
 
-  uploadDir = async uri => (new Promise(async (resolve, reject) => {
-    const result = [];
-    const optionsSet = this.readdir(uri);
-    let index = optionsSet.length;
-    // eslint-disable-next-line no-plusplus
-    while (index--) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        result.push(await this.octokit.repos.createFile(optionsSet[index]));
-      } catch (error) {
-        reject(error);
+  async uploadDir(uri) {
+    return (new Promise(async (resolve, reject) => {
+      const result = [];
+      const optionsSet = this.readdir(uri);
+      let index = optionsSet.length;
+      // eslint-disable-next-line no-plusplus
+      while (index--) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          result.push(await this.octokit.repos.createFile(optionsSet[index]));
+        } catch (error) {
+          reject(error);
+        }
       }
-    }
-    resolve(result);
-  }));
+      resolve(result);
+    }));
+  }
 }
+
+module.exports = GitHubUtils;
