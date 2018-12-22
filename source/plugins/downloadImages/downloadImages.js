@@ -142,7 +142,7 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    let {
+    const {
       dom: {
         mercury,
       },
@@ -167,25 +167,9 @@ module.exports = deepmerge(pluginBase, {
     const images = mercury.window.document.querySelectorAll('img, picture source');
 
     const downloadsList = Array.from(images).map((element) => {
-      let src = element.getAttribute('src');
-      let srcset = element.getAttribute('srcset');
+      const src = element.getAttribute('src');
+      const srcset = element.getAttribute('srcset');
       const downloads = [];
-
-      if (
-        (src !== null)
-        && (srcset !== null)
-      ) {
-        src = decodeURI(src).replace(/[\s]+/ig, ' ').trim();
-        srcset = decodeURI(srcset).replace(/[\s]+/ig, ' ').trim();
-
-        if (src === srcset) {
-          const img = mercury.window.document.querySelector(`img[src][srcset*="${decodeURI(element.getAttribute('src')).split(',')[0]}"]`);
-
-          if (img !== null) {
-            element.setAttribute('src', img.getAttribute('src'));
-          }
-        }
-      }
 
       if (src !== null) {
         const urls = [...new Set(getURLSFromString(src))];
@@ -207,9 +191,9 @@ module.exports = deepmerge(pluginBase, {
     names.forEach(({ oldName, newName }) => {
       html = html.replace(new RegExp(oldName, 'g'), newName);
     });
+    modified.html.mercury = html;
     const { JSDOM } = jsdom;
-    mercury = new JSDOM(html);
-
+    modified.dom.mercury = new JSDOM(html);
     modified.stack.push(name);
     return modified;
   },

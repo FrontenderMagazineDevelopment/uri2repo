@@ -43,7 +43,7 @@ module.exports = deepmerge(pluginBase, {
    * @param {object} unmodified - current article sate
    * @return {object} - modified article state
    */
-  resource: (unmodified) => {
+  [['mutation:before']]: (unmodified) => {
     const {
       meta: {
         name,

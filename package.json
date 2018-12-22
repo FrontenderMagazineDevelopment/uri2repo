@@ -4,8 +4,6 @@
   "description": "build an article from url",
   "main": "index.js",
   "scripts": {
-    "watch": "babel --watch source -s true -d lib --ignore __tests__/**,__mocks__/**",
-    "build": "babel source -s true -d lib --ignore __tests__/**,__mocks__/**",
     "precommit": "lint-staged",
     "lint": "eslint --color -f stylish --fix ./source/linttest/*.jsx"
   },

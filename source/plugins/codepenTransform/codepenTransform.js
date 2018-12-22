@@ -1,7 +1,7 @@
 const urlParser = require('url');
 const deepmerge = require('deepmerge');
 const pluginBase = require('../../libs/PluginBase');
-const CodepenCravler = require('../../../lib/libs/CodepenCravler');
+const CodepenCravler = require('../../libs/CodepenCravler');
 
 /**
  * @typedef {object} PluginMeta

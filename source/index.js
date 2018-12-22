@@ -1,11 +1,9 @@
 /* eslint-disable class-methods-use-this */
 require('@babel/polyfill');
-
+require('dotenv').config({ path: '../.env' });
 const path = require('path');
 const fs = require('fs');
 const flatten = require('array-flatten');
-
-require('dotenv').config({ path: '../.env' });
 
 /**
  * ArticleBuilder
@@ -36,6 +34,17 @@ class ArticleBuilder {
       'github:after',
       'after',
     ];
+
+    this.skip = {
+      plugins: [
+        // 'TMPDir',
+      ],
+      stages: [
+        'github:before',
+        'github',
+        'github:after',
+      ],
+    };
   }
 
   pluginCollector(uri, plugins = []) {
@@ -63,6 +72,7 @@ class ArticleBuilder {
     plugins = plugins.map(uri => (require(uri)));
 
     const result = await flatten(this.stages
+      .filter(stage => (!this.skip.stages.includes(stage)))
       .filter(stage => (plugins
         .filter(plugin => (
           (plugin[stage] !== undefined)
@@ -74,10 +84,12 @@ class ArticleBuilder {
             && (typeof plugin[stage] === 'function')))
           .sort((pluginA, pluginB) => (pluginA.meta.dependency.includes(pluginB.meta.name) ? 1 : 0))
           .map(plugin => (plugin[stage]))
-      ))).reduce(async (state, plugin) => {
-      const resolvedState = await state;
-      return plugin(resolvedState);
-    }, article);
+      )))
+      .filter(plugin => (!this.skip.plugins.includes(plugin)))
+      .reduce(async (state, plugin) => {
+        const resolvedState = await state;
+        return plugin(resolvedState);
+      }, article);
 
     console.log(result);
   }
@@ -87,8 +99,6 @@ class ArticleBuilder {
   try {
     const builder = new ArticleBuilder();
     await builder.create('https://daveceddia.com/intro-to-hooks/');
-    // const result =
-    // console.log(result);
   } catch (error) {
     console.log(error);
   }

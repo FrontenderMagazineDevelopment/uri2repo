@@ -16,7 +16,7 @@ const pluginBase = require('../../libs/PluginBase');
  */
 module.exports = deepmerge(pluginBase, {
   meta: {
-    name: 'restoreCodeSnippets',
+    name: 'restoreImages',
     dependency: ['matchContainer', 'mercury', 'fetch'],
   },
 
@@ -54,8 +54,8 @@ module.exports = deepmerge(pluginBase, {
     dependencyCheck(stack, dependency);
     modified.stack.push(name);
     if (!matched) return unmodified;
-    const mercuryCodeBlocks = mercury.window.document.querySelectorAll('pre>code');
-    const originalCodeBlocks = matched.querySelectorAll('pre>code');
+    const mercuryCodeBlocks = mercury.window.document.querySelectorAll('img');
+    const originalCodeBlocks = matched.querySelectorAll('img');
     mercuryCodeBlocks.forEach((block, index) => {
       block.replaceWith(originalCodeBlocks[index]);
     });
