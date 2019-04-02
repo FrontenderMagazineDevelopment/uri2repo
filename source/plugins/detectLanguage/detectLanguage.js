@@ -52,7 +52,7 @@ module.exports = deepmerge(pluginBase, {
       },
     } = modified;
     if (domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency);
+    dependencyCheck(stack, dependency, name);
 
     const detectLanguage = new DetectLanguage({
       key: process.env.DETECTLANGUAGE_KEY,

@@ -1,9 +1,11 @@
 /* eslint-disable class-methods-use-this */
 require('@babel/polyfill');
-require('dotenv').config({ path: '../.env' });
+const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
 const flatten = require('array-flatten');
+
+dotenv.config();
 
 /**
  * ArticleBuilder
@@ -35,14 +37,8 @@ class ArticleBuilder {
       'after',
     ];
     this.skip = {
-      plugins: [
-        // 'TMPDir',
-      ],
-      stages: [
-        'github:before',
-        'github',
-        'github:after',
-      ],
+      plugins: [],
+      stages: [],
     };
   }
 
@@ -70,27 +66,43 @@ class ArticleBuilder {
     // eslint-disable-next-line import/no-dynamic-require, global-require
     plugins = plugins.map(uri => (require(uri)));
 
-    const result = await flatten(this.stages
+    await flatten(this.stages
+      // remove stages we should skip
       .filter(stage => (!this.skip.stages.includes(stage)))
-      .filter(stage => (plugins
-        .filter(plugin => (
-          (plugin[stage] !== undefined)
-          && (typeof plugin[stage] === 'function'))).length > 0))
-      .map(stage => (
-        plugins
-          .filter(plugin => (
-            (plugin[stage] !== undefined)
-            && (typeof plugin[stage] === 'function')))
-          .sort((pluginA, pluginB) => (pluginA.meta.dependency.includes(pluginB.meta.name) ? 1 : 0))
-          .map(plugin => (plugin[stage]))
-      )))
-      .filter(plugin => (!this.skip.plugins.includes(plugin)))
+      // map stages to plugins array
+      .map(stage => plugins
+      // filter plugin that have no functions for this stage
+        .filter(plugin => ((plugin[stage] !== undefined) && (typeof plugin[stage] === 'function')))
+      // filter plugin we need to skip
+        .filter((plugin) => {
+          const { meta: { name } } = plugin;
+          return (this.skip.plugins.find(
+            skippedPlugin => (
+              (
+                skippedPlugin.name === name
+                  && skippedPlugin.stages === undefined
+              ) || (
+                skippedPlugin.name === name
+                  && Array.isArray(skippedPlugin.stages)
+                  && skippedPlugin.stages.includes(stage)
+              ) || (
+                skippedPlugin.name === name
+                  && !Array.isArray(skippedPlugin.stages)
+                  && skippedPlugin.stages === stage
+              )
+            ),
+          ) === undefined);
+        })
+      // sort plugins by dependency
+        .sort((pluginA, pluginB) => (
+          pluginA.meta.dependency.includes(pluginB.meta.name)
+            ? 1 : -1))
+      // map plugins to functions
+        .map(plugin => (plugin[stage]))))
       .reduce(async (state, plugin) => {
         const resolvedState = await state;
         return plugin(resolvedState);
       }, article);
-
-    console.log(result);
   }
 }
 

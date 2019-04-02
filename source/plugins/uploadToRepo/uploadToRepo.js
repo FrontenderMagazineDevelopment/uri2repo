@@ -49,7 +49,7 @@ module.exports = deepmerge(pluginBase, {
       ...unmodified,
     };
     if (domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency);
+    dependencyCheck(stack, dependency, name);
     const articleDIR = path.resolve(TMP_DIR_NAME, slug);
     await gitHubUtils.uploadDir(articleDIR);
     modified.stack.push(name);

@@ -68,7 +68,7 @@ module.exports = deepmerge(pluginBase, {
       ...unmodified,
     };
     if (domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency);
+    dependencyCheck(stack, dependency, name);
 
     const element = mercury.window.document.querySelector('body').firstChild;
     const selector = getNodeSelector(element);

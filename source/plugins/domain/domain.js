@@ -42,7 +42,7 @@ module.exports = deepmerge(pluginBase, {
       ...unmodified,
     };
     if (domainCheck(unmodified.url, targetDomain)) return unmodified;
-    dependencyCheck(unmodified.stack, dependency);
+    dependencyCheck(unmodified.stack, dependency, name);
     const parsed = path.parse(unmodified.url);
     if (parsed.ext !== '') {
       modified.base = parsed.dir.replace(/([^/\\])$/ig, `$1${path.sep}`);

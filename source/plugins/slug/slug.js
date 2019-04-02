@@ -42,7 +42,7 @@ module.exports = deepmerge(pluginBase, {
       ...unmodified,
     };
     if (domainCheck(unmodified.url, domain)) return unmodified;
-    dependencyCheck(unmodified.stack, dependency);
+    dependencyCheck(unmodified.stack, dependency, name);
     const {
       slug,
       url,

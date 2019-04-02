@@ -1,5 +1,6 @@
 const jsdom = require('jsdom');
 const deepmerge = require('deepmerge');
+const fetch = require('isomorphic-fetch');
 const pluginBase = require('../../libs/PluginBase');
 
 /**
@@ -43,7 +44,7 @@ module.exports = deepmerge(pluginBase, {
       dependencyCheck,
     } = module.exports;
     if (domainCheck(unmodified.url, domain)) return unmodified;
-    dependencyCheck(unmodified.stack, dependency);
+    dependencyCheck(unmodified.stack, dependency, name);
     const response = await fetch(unmodified.url);
     if (!response.ok) throw new Error(`${name}: can't fetch resource.`);
     const { JSDOM } = jsdom;

@@ -45,7 +45,7 @@ module.exports = deepmerge(pluginBase, {
       ...unmodified,
     };
     if (domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency);
+    dependencyCheck(stack, dependency, name);
     modified.gitHubUtils = new GitHubUtils();
     modified.stack.push(name);
     return modified;

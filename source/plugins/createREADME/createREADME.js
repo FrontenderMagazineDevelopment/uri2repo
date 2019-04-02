@@ -54,7 +54,7 @@ module.exports = deepmerge(pluginBase, {
       }],
     } = modified;
     if (domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency);
+    dependencyCheck(stack, dependency, name);
 
     fs.writeFileSync(path.resolve(
       TMP_DIR_NAME,

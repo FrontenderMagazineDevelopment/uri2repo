@@ -149,7 +149,7 @@ module.exports = deepmerge(pluginBase, {
     } = modified;
 
     if (domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency);
+    dependencyCheck(stack, dependency, name);
 
     const linked = mercury.window.document.querySelectorAll('a img');
     const DIR = path.resolve(

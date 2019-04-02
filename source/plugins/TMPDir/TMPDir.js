@@ -90,7 +90,7 @@ module.exports = deepmerge(pluginBase, {
     };
 
     if (domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency);
+    dependencyCheck(stack, dependency, name);
 
     const articleDIR = path.resolve(TMP_DIR_NAME, slug);
     const articleImagesDIR = path.resolve(articleDIR, TMP_IMAGE_DIR_NAME);

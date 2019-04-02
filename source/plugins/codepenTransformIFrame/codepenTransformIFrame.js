@@ -71,7 +71,7 @@ module.exports = deepmerge(pluginBase, {
       },
     } = modified;
     if (domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency);
+    dependencyCheck(stack, dependency, name);
     modified.stack.push(name);
 
     const elements = mercury.window.document.querySelectorAll("iframe[src*='//codepen.io/']");

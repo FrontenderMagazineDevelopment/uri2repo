@@ -24,9 +24,9 @@ module.exports = {
    * @param {string[]} dependency - list of dependencies for this plugin
    * @throw {Error} - if some dependencies not met
    */
-  dependencyCheck: (stack = [], dependency = []) => {
+  dependencyCheck: (stack = [], dependency = [], name = null) => {
     const error = dependency.find(plugin => (!stack.includes(plugin)));
-    if (error !== undefined) throw new Error(`Dependencies not met: ${error}`);
+    if (error !== undefined) throw new Error(`Dependencies ${name ? `of ${name}` : ''} not met: ${error}`);
   },
 
   /**
