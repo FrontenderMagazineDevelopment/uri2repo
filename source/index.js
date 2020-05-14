@@ -1,9 +1,11 @@
-/* eslint-disable class-methods-use-this */
-require('@babel/polyfill');
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
-const flatten = require('array-flatten');
+const { flatten } = require('array-flatten');
+
+// console.log(flatten);
+
+// process.exit(0);
 
 dotenv.config();
 
@@ -106,11 +108,11 @@ class ArticleBuilder {
   }
 }
 
-(async () => {
-  try {
-    const builder = new ArticleBuilder();
-    await builder.create('https://daveceddia.com/intro-to-hooks/');
-  } catch (error) {
-    console.log(error);
-  }
-})();
+// (async () => {
+//   try {
+//     const builder = new ArticleBuilder();
+//     await builder.create('https://www.smashingmagazine.com/2020/05/convince-others-against-dark-patterns/');
+//   } catch (error) {
+//     console.log(error);
+//   }
+// })();

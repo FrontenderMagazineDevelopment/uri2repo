@@ -1,8 +1,8 @@
 /* eslint-disable class-methods-use-this */
-const Octokit = require('@octokit/rest');
+const { Octokit } = require("@octokit/rest");
 const fs = require('fs');
 const path = require('path');
-const flatten = require('array-flatten');
+const { flatten } = require('array-flatten');
 
 /**
 * GitHubUtils - Description
@@ -22,11 +22,13 @@ class GitHubUtils {
     GitHubUtils.PROJECT_NAME = 'Перевод';
     GitHubUtils.COLUMN_NAME = 'Запланировано';
 
-    this.octokit = Octokit();
-    this.octokit.authenticate({
-      type: 'token',
-      token: token || process.env.GITHUB_TOKEN,
+    this.octokit = new Octokit({
+      auth: token || process.env.GITHUB_TOKEN,
     });
+    // this.octokit.authenticate({
+    //   type: 'token',
+    //   token: token || process.env.GITHUB_TOKEN,
+    // });
   }
 
   /**
@@ -153,7 +155,7 @@ class GitHubUtils {
       while (index--) {
         try {
           // eslint-disable-next-line no-await-in-loop
-          result.push(await this.octokit.repos.createFile(optionsSet[index]));
+          result.push(await this.octokit.repos.createOrUpdateFile(optionsSet[index]));
         } catch (error) {
           reject(error);
         }
