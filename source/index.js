@@ -111,6 +111,8 @@ class ArticleBuilder {
   }
 }
 
+module.exports = ArticleBuilder;
+
 // (async () => {
 //   const builder = new ArticleBuilder();
 //   builder.skip.stages = [
@@ -131,7 +133,6 @@ class ArticleBuilder {
 //     { name: 'createREADME' },
 //     { name: 'createCard' },
 //   ];
-
 //   try {
 //     const result = await builder.create('https://increment.com/frontend/a-users-guide-to-css-variables/');
 //     // console.log(result);
