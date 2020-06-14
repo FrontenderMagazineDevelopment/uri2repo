@@ -1,6 +1,17 @@
 const deepmerge = require('deepmerge');
 const pluginBase = require('../../libs/PluginBase');
 
+const Node = {
+  ELEMENT_NODE:	1, //	An Element node like <p> or <div>.
+  TEXT_NODE: 3, //	The actual Text inside an Element or Attr.
+  CDATA_SECTION_NODE: 4, // A CDATASection, such as <!CDATA[[ … ]]>.
+  PROCESSING_INSTRUCTION_NODE: 7,	// A ProcessingInstruction of an XML document, such as <?xml-stylesheet … ?>.
+  COMMENT_NODE: 8, // A Comment node, such as <!-- … -->.
+  DOCUMENT_NODE: 9, // A Document node.
+  DOCUMENT_TYPE_NODE: 10, // A DocumentType node, such as <!DOCTYPE html>.
+  DOCUMENT_FRAGMENT_NODE: 11, // A DocumentFragment node.
+};
+
 /**
  * @typedef {object} PluginMeta
  * @property {string} name - plugin name
@@ -29,7 +40,8 @@ module.exports = deepmerge(pluginBase, {
     if (element === null) throw new Error('element should be provided');
     const tag = element.tagName.toLowerCase();
     const id = element.getAttribute('id');
-    const classname = element.getAttribute('class').split(' ').join('.');
+    let classname = element.getAttribute('class');
+    if (classname && classname.indexOf(' ') > -1) classname = classname.split(' ').join('.');
     let attributesSelector = '';
     const skipAttr = ['class', 'id'];
     for (let i = element.attributes.length - 1; i >= 0; i -= 1) {
@@ -40,6 +52,7 @@ module.exports = deepmerge(pluginBase, {
 
   /**
    * match mercury and fetch dom containers
+   * @todo find out why do I need this.
    * @param {object} unmodified - current article sate
    * @return {object} - modified article state
    */
@@ -67,7 +80,7 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (domainCheck(url, domain)) return unmodified;
+    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
 
     const element = mercury.window.document.querySelector('body').firstChild;
@@ -78,13 +91,13 @@ module.exports = deepmerge(pluginBase, {
     } else if (container.length > 0) {
       container = Array.from(container);
       const selectors = Array.from(element.childNodes)
-        .filter(node => (node.nodeType === 1))
+        .filter((node) => (node.nodeType === 1))
         .map(getNodeSelector);
-      container.filter(node => (
+      container.filter((node) => (
         Array.from(node.childNodes)
-          .filter(child => (child.nodeType !== Node.TEXT_NODE))
+          .filter((child) => (child.nodeType !== Node.TEXT_NODE))
           .find(
-            kid => (!selectors.include(getNodeSelector(kid))),
+            (kid) => (!selectors.includes(getNodeSelector(kid))),
           ) === undefined));
       if (container.length === 1) {
         [modified.dom.matched] = container;

@@ -30,7 +30,6 @@ module.exports = deepmerge(pluginBase, {
    * @return {object} - modified article state
    */
   after: (unmodified) => {
-    return unmodified;
     const {
       meta: {
         name,
@@ -52,7 +51,7 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (domainCheck(url, domain)) return unmodified;
+    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, [...dependency, `${name}:before`]);
     const articleDIR = path.resolve(TMP_DIR_NAME, slug);
     rimraf.sync(articleDIR);
@@ -88,8 +87,7 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-
-    if (domainCheck(url, domain)) return unmodified;
+    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
 
     const articleDIR = path.resolve(TMP_DIR_NAME, slug);

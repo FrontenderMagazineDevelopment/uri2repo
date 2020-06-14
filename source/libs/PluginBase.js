@@ -25,7 +25,7 @@ module.exports = {
    * @throw {Error} - if some dependencies not met
    */
   dependencyCheck: (stack = [], dependency = [], name = null) => {
-    const error = dependency.find(plugin => (!stack.includes(plugin)));
+    const error = dependency.find((plugin) => (!stack.includes(plugin)));
     if (error !== undefined) throw new Error(`Dependencies ${name ? `of ${name}` : ''} not met: ${error}`);
   },
 
@@ -36,6 +36,6 @@ module.exports = {
    */
   domainCheck: (url, domain) => {
     const currentDomain = /https?:\/\/(?<domain>[^/\\]+)/ig.exec(url);
-    return currentDomain && (domain === currentDomain[1]);
+    return (domain === null) || (currentDomain && (currentDomain[1].includes(domain)));
   },
 };

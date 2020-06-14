@@ -1,11 +1,18 @@
 {
   "name": "@frontender-magazine/builder",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "build an article from url",
-  "main": "index.js",
+  "main": "source/index.js",
   "scripts": {
     "precommit": "lint-staged",
-    "lint": "eslint --color -f stylish --fix ./source/linttest/*.jsx"
+    "lint": "eslint --color -f stylish --fix ./source/linttest/*.jsx",
+    "postversion": "git push && git push --tags",
+    "major": "npm version major && npm publish --tag latest --access public",
+    "minor": "npm version minor && npm publish --tag latest --access public",
+    "patch": "npm version patch && npm publish --tag latest --access public",
+    "dopreminor": "npm version preminor && npm publish --tag next --access public",
+    "dopremajor": "npm version premajor && npm publish --tag next --access public",
+    "doprepatch": "npm version prepatch && npm publish --tag next --access public"
   },
   "repository": {
     "type": "git",
@@ -73,6 +80,7 @@
     "joi": "^14.3.1",
     "jsdom": "^16.2.2",
     "keyword-extractor": "0.0.19",
+    "open-graph-scraper": "^3.6.2",
     "path": "^0.12.7",
     "prettier": "^2.0.5",
     "pretty": "^2.0.0",

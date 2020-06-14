@@ -41,7 +41,7 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (domainCheck(unmodified.url, domain)) return unmodified;
+    if (!domainCheck(unmodified.url, domain)) return unmodified;
     dependencyCheck(unmodified.stack, dependency, name);
     const {
       slug,

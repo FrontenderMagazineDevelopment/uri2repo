@@ -68,7 +68,7 @@ module.exports = deepmerge(pluginBase, {
         mercury,
       },
     } = modified;
-    if (domainCheck(url, domain)) return unmodified;
+    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
     modified.stack.push(name);
 

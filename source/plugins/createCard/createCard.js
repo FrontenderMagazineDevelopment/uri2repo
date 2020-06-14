@@ -52,7 +52,7 @@ module.exports = deepmerge(pluginBase, {
       assignees,
       tags,
     } = modified;
-    if (domainCheck(url, domain)) return unmodified;
+    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
     const [{ title }] = mercury;
     await gitHubUtils.createCard(url, title, tags, assignees);

@@ -1,5 +1,3 @@
-const fs = require('fs');
-const path = require('path');
 const prettier = require('prettier');
 const query = require('query-string');
 const deepmerge = require('deepmerge');
@@ -179,8 +177,6 @@ module.exports = deepmerge(pluginBase, {
     const {
       url,
       stack,
-      slug,
-      TMP_DIR_NAME,
     } = unmodified;
     const modified = {
       dom: {},
@@ -192,7 +188,7 @@ module.exports = deepmerge(pluginBase, {
         mercury,
       },
     } = modified;
-    if (domainCheck(url, domain)) return unmodified;
+    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
 
     let markdown = convertToMD(mercury);
@@ -203,18 +199,6 @@ module.exports = deepmerge(pluginBase, {
       tabWidth: 2,
       useTabs: false,
     });
-
-    fs.writeFileSync(path.resolve(
-      TMP_DIR_NAME,
-      slug,
-      'eng.md',
-    ), markdown);
-
-    fs.writeFileSync(path.resolve(
-      TMP_DIR_NAME,
-      slug,
-      'rus.md',
-    ), markdown);
 
     modified.markdown = markdown;
     modified.stack.push(name);

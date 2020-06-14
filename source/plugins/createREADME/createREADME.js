@@ -53,7 +53,7 @@ module.exports = deepmerge(pluginBase, {
         excerpt,
       }],
     } = modified;
-    if (domainCheck(url, domain)) return unmodified;
+    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
 
     fs.writeFileSync(path.resolve(

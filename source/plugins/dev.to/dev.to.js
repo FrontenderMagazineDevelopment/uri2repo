@@ -1,6 +1,5 @@
 const deepmerge = require('deepmerge');
 const pluginBase = require('../../libs/PluginBase');
-const TagExtractor = require('../../libs/TagExtractor');
 
 /**
  * @typedef {object} PluginMeta
@@ -17,8 +16,9 @@ const TagExtractor = require('../../libs/TagExtractor');
  */
 module.exports = deepmerge(pluginBase, {
   meta: {
-    name: 'getTags',
-    dependency: ['createMarkdown', 'domain'],
+    name: 'dev.to',
+    dependency: ['createMarkdown', 'domain', 'getTags'],
+    domain: 'dev.to',
   },
 
   /**
@@ -40,20 +40,20 @@ module.exports = deepmerge(pluginBase, {
       url,
       stack,
       domain: domainName,
-      markdown,
+      dom: { original },
     } = unmodified;
     const modified = {
       tags: [],
       stack: [],
       ...unmodified,
     };
-    const {
-      tags,
-    } = modified;
+
     if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
-    const extractedTags = await new TagExtractor(markdown);
-    modified.tags = [...tags, domainName, ...extractedTags];
+
+    const extractedTags = [...original.window.document.querySelectorAll('.tags .tag')].map((element) => element.innerHTML).map((element) => element.slice(1));
+
+    modified.tags = [...extractedTags, domainName];
     modified.stack.push(name);
     return modified;
   },

@@ -1,6 +1,7 @@
+const fs = require('fs');
+const path = require('path');
 const deepmerge = require('deepmerge');
 const pluginBase = require('../../libs/PluginBase');
-const TagExtractor = require('../../libs/TagExtractor');
 
 /**
  * @typedef {object} PluginMeta
@@ -17,43 +18,49 @@ const TagExtractor = require('../../libs/TagExtractor');
  */
 module.exports = deepmerge(pluginBase, {
   meta: {
-    name: 'getTags',
-    dependency: ['createMarkdown', 'domain'],
+    name: 'writeMarkdown',
+    dependency: ['createMarkdown', 'slug'],
   },
 
   /**
-   * create README.md file
+   * match mercury and fetch dom containers
    * @param {object} unmodified - current article sate
    * @return {object} - modified article state
    */
-  [['mutation:after']]: async (unmodified) => {
+  [['mutation:after']]: (unmodified) => {
     const {
       meta: {
         name,
         dependency,
-        domain,
       },
       dependencyCheck,
-      domainCheck,
     } = module.exports;
     const {
-      url,
       stack,
-      domain: domainName,
-      markdown,
+      slug,
+      TMP_DIR_NAME,
     } = unmodified;
     const modified = {
-      tags: [],
       stack: [],
       ...unmodified,
     };
     const {
-      tags,
+      markdown,
     } = modified;
-    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
-    const extractedTags = await new TagExtractor(markdown);
-    modified.tags = [...tags, domainName, ...extractedTags];
+
+    fs.writeFileSync(path.resolve(
+      TMP_DIR_NAME,
+      slug,
+      'eng.md',
+    ), markdown);
+
+    fs.writeFileSync(path.resolve(
+      TMP_DIR_NAME,
+      slug,
+      'rus.md',
+    ), markdown);
+
     modified.stack.push(name);
     return modified;
   },

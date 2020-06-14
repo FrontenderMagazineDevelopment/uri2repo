@@ -3,11 +3,13 @@ const path = require('path');
 const fs = require('fs');
 const { flatten } = require('array-flatten');
 
-// console.log(flatten);
-
-// process.exit(0);
-
 dotenv.config();
+
+// eslint-disable-next-line no-unused-vars
+const logger = (name) => {
+  console.log(name);
+  return name;
+};
 
 /**
  * ArticleBuilder
@@ -66,20 +68,20 @@ class ArticleBuilder {
     };
     let plugins = this.pluginCollector(path.resolve('./source/plugins'));
     // eslint-disable-next-line import/no-dynamic-require, global-require
-    plugins = plugins.map(uri => (require(uri)));
+    plugins = plugins.map((uri) => (require(uri)));
 
-    await flatten(this.stages
+    return flatten(this.stages
       // remove stages we should skip
-      .filter(stage => (!this.skip.stages.includes(stage)))
+      .filter((stage) => (!this.skip.stages.includes(stage)))
       // map stages to plugins array
-      .map(stage => plugins
+      .map((stage) => plugins
       // filter plugin that have no functions for this stage
-        .filter(plugin => ((plugin[stage] !== undefined) && (typeof plugin[stage] === 'function')))
+        .filter((plugin) => ((plugin[stage] !== undefined) && (typeof plugin[stage] === 'function')))
       // filter plugin we need to skip
         .filter((plugin) => {
           const { meta: { name } } = plugin;
           return (this.skip.plugins.find(
-            skippedPlugin => (
+            (skippedPlugin) => (
               (
                 skippedPlugin.name === name
                   && skippedPlugin.stages === undefined
@@ -99,8 +101,9 @@ class ArticleBuilder {
         .sort((pluginA, pluginB) => (
           pluginA.meta.dependency.includes(pluginB.meta.name)
             ? 1 : -1))
+        // .map(logger)
       // map plugins to functions
-        .map(plugin => (plugin[stage]))))
+        .map((plugin) => (plugin[stage]))))
       .reduce(async (state, plugin) => {
         const resolvedState = await state;
         return plugin(resolvedState);
@@ -109,9 +112,32 @@ class ArticleBuilder {
 }
 
 // (async () => {
+//   const builder = new ArticleBuilder();
+//   builder.skip.stages = [
+//     'github:before',
+//     'github',
+//     'github:after',
+//   ];
+//   builder.skip.plugins = [
+//     { name: 'codepenTransform' },
+//     { name: 'codepenTransformIFrame' },
+//     { name: 'createREADME' },
+//     { name: 'downloadImages' },
+//     { name: 'writeMarkdown' },
+//     { name: 'TMPDir' },
+//     { name: 'initGithub' },
+//     { name: 'uploadToRepo' },
+//     { name: 'createRepo' },
+//     { name: 'createREADME' },
+//     { name: 'createCard' },
+//   ];
+
 //   try {
-//     const builder = new ArticleBuilder();
-//     await builder.create('https://www.smashingmagazine.com/2020/05/convince-others-against-dark-patterns/');
+//     const result = await builder.create('https://increment.com/frontend/a-users-guide-to-css-variables/');
+//     // console.log(result);
+//     console.log(result.tags);
+//     console.log(result.mercury[0].author);
+//     console.log(result.openGraph);
 //   } catch (error) {
 //     console.log(error);
 //   }

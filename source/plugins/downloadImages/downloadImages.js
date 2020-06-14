@@ -148,7 +148,7 @@ module.exports = deepmerge(pluginBase, {
       },
     } = modified;
 
-    if (domainCheck(url, domain)) return unmodified;
+    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
 
     const linked = mercury.window.document.querySelectorAll('a img');
@@ -184,7 +184,7 @@ module.exports = deepmerge(pluginBase, {
     });
 
     const list = [...new Set(flatten(downloadsList))];
-    const downloads = list.map(async uri => download(uri, base, DIR));
+    const downloads = list.map(async (uri) => download(uri, base, DIR));
     const names = await Promise.all(downloads);
 
     let html = mercury.window.document.documentElement.outerHTML;

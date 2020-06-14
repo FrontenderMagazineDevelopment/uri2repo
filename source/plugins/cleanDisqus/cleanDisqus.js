@@ -49,7 +49,7 @@ module.exports = deepmerge(pluginBase, {
         mercury,
       },
     } = modified;
-    if (domainCheck(url, domain)) return unmodified;
+    if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
 
     Array.from(mercury.window.document.querySelectorAll('[class*="disqus"],[class*="dsq-"],[id*="disqus"]'))

@@ -43,7 +43,7 @@ module.exports = deepmerge(pluginBase, {
       domainCheck,
       dependencyCheck,
     } = module.exports;
-    if (domainCheck(unmodified.url, domain)) return unmodified;
+    if (!domainCheck(unmodified.url, domain)) return unmodified;
     dependencyCheck(unmodified.stack, dependency, name);
     const response = await fetch(unmodified.url);
     if (!response.ok) throw new Error(`${name}: can't fetch resource.`);

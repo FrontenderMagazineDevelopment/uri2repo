@@ -41,7 +41,7 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (domainCheck(unmodified.url, targetDomain)) return unmodified;
+    if (!domainCheck(unmodified.url, targetDomain)) return unmodified;
     dependencyCheck(unmodified.stack, dependency, name);
     const parsed = path.parse(unmodified.url);
     if (parsed.ext !== '') {
