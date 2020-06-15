@@ -55,9 +55,19 @@ module.exports = deepmerge(pluginBase, {
 
     if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
-    const extractedTags = [...original.window.document.querySelectorAll('.tags a')].map((element) => element.innerHTML);
-    modified.tags = [...extractedTags, domainName];
-    page.author = original.window.document.querySelector('.author-name-area .author-name').innerHTML;
+    const tagsElements = original.window.document.querySelectorAll('.tags a');
+    if (tagsElements) {
+      const extractedTags = [...tagsElements].map((element) => element.innerHTML);
+      modified.tags = [...extractedTags, domainName];
+    } else {
+      console.log('missing tags on: ', url);
+    }
+    const authorElement = original.window.document.querySelector('.author-name-area .author-name');
+    if (authorElement !== null) {
+      page.author = original.window.document.querySelector('.author-name-area .author-name').innerHTML;
+    } else {
+      console.log('missing author on: ', url);
+    }
     modified.stack.push(name);
     return modified;
   },
