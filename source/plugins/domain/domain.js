@@ -36,20 +36,21 @@ module.exports = deepmerge(pluginBase, {
       domainCheck,
     } = module.exports;
     const modified = {
-      base: null,
       domain: null,
       stack: [],
       ...unmodified,
     };
     if (!domainCheck(unmodified.url, targetDomain)) return unmodified;
     dependencyCheck(unmodified.stack, dependency, name);
-    const parsed = path.parse(unmodified.url);
-    if (parsed.ext !== '') {
-      modified.base = parsed.dir.replace(/([^/\\])$/ig, `$1${path.sep}`);
-    } else {
-      modified.base = unmodified.url.replace(/([^/\\])$/ig, `$1${path.sep}`);
-    }
-    [, modified.domain] = /https?:\/\/([^/\\]+)/ig.exec(unmodified.url);
+    // const parsed = path.parse(unmodified.url);
+    // if (parsed.ext !== '') {
+    //   modified.base = parsed.dir.replace(/([^/\\])$/ig, `$1${path.sep}`);
+    // } else {
+    //   modified.base = unmodified.url.replace(/([^/\\])$/ig, `$1${path.sep}`);
+    // }
+    // [, modified.domain] = /https?:\/\/([^/\\]+)/ig.exec(unmodified.url);
+    const url = new URL(unmodified.url);
+    modified.domain = url.origin.replace(/^www./ig,'');
     modified.stack.push(name);
     return modified;
   },
