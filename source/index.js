@@ -66,7 +66,7 @@ class ArticleBuilder {
       TMP_DIR_NAME: ArticleBuilder.TMP_DIR_NAME,
       TMP_IMAGE_DIR_NAME: ArticleBuilder.TMP_IMAGE_DIR_NAME,
     };
-    let plugins = this.pluginCollector(path.resolve('./source/plugins'));
+    let plugins = this.pluginCollector(path.resolve(__dirname, './source/plugins'));
     // eslint-disable-next-line import/no-dynamic-require, global-require
     plugins = plugins.map((uri) => (require(uri)));
 
