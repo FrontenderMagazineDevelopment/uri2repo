@@ -11,16 +11,16 @@ module.exports = (dom) => {
   const published = container.querySelector('[itemprop="datePublished"]');
   return {
     author:
-      (author && author.textContent.replace(/[\r\n]+/gm, ''))
-      || (creator && creator.textContent.replace(/[\r\n]+/gm, '')),
-    title: title && title.textContent.replace(/[\r\n]+/gm, ''),
+      (author && author.textContent.replace(/[\r\n]+/gm, '').trim())
+      || (creator && creator.textContent.replace(/[\r\n]+/gm, '').trim()),
+    title: title && title.textContent.replace(/[\r\n]+/gm, '').trim(),
     description:
-      (description && description.textContent.replace(/[\r\n]+/gm, ''))
-      || (abstract && abstract.textContent.replace(/[\r\n]+/gm, '')),
+      (description && description.textContent.replace(/[\r\n]+/gm, '').trim())
+      || (abstract && abstract.textContent.replace(/[\r\n]+/gm, '').trim()),
     created:
-      (created && created.textContent.replace(/[\r\n]+/gm, ''))
-      || (published && published.textContent.replace(/[\r\n]+/gm, ''))
-      || (modified && modified.textContent.replace(/[\r\n]+/gm, '')),
-    modified: modified && modified.textContent.replace(/[\r\n]+/gm, ''),
+      (created && created.textContent.replace(/[\r\n]+/gm, '').trim())
+      || (published && published.textContent.replace(/[\r\n]+/gm, '').trim())
+      || (modified && modified.textContent.replace(/[\r\n]+/gm, '').trim()),
+    modified: modified && modified.textContent.replace(/[\r\n]+/gm, '').trim(),
   };
 };
