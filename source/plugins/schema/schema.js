@@ -18,7 +18,7 @@ const articleSchema = require('../../libs/ArticleSchema');
 module.exports = deepmerge(pluginBase, {
   meta: {
     name: 'schema',
-    dependency: ['mercury'],
+    dependency: ['resource:after'],
   },
 
   /**
