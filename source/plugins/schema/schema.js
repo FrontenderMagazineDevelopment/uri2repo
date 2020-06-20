@@ -18,7 +18,7 @@ const articleSchema = require('../../libs/ArticleSchema');
 module.exports = deepmerge(pluginBase, {
   meta: {
     name: 'schema',
-    dependency: ['resource:after'],
+    dependency: ['fetch'],
   },
 
   /**
@@ -26,7 +26,7 @@ module.exports = deepmerge(pluginBase, {
    * @param {object} unmodified - current article sate
    * @return {object} - modified article state
    */
-  before: (unmodified) => {
+  'resource:after': (unmodified) => {
     const {
       meta: {
         name,
