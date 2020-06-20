@@ -54,18 +54,20 @@ module.exports = deepmerge(pluginBase, {
     if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
 
-    const detectLanguage = new DetectLanguage({
-      key: process.env.DETECTLANGUAGE_KEY,
-    });
-
-    const language = await new Promise((resolve, reject) => {
-      detectLanguage.detect(striptags(mercury), (error, result) => {
-        if (error) reject(error);
-        resolve(result);
+    try {
+      const detectLanguage = new DetectLanguage({
+        key: process.env.DETECTLANGUAGE_KEY,
       });
-    });
 
-    modified.language = language;
+      const language = await new Promise((resolve, reject) => {
+        detectLanguage.detect(striptags(mercury), (error, result) => {
+          if (error) reject(error);
+          resolve(result);
+        });
+      });
+
+      modified.language = language;
+    } catch (error) {}
     modified.stack.push(name);
     return modified;
   },
