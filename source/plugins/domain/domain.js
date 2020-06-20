@@ -1,4 +1,4 @@
-const path = require('path');
+// const path = require('path');
 const deepmerge = require('deepmerge');
 const pluginBase = require('../../libs/PluginBase');
 
@@ -50,7 +50,7 @@ module.exports = deepmerge(pluginBase, {
     // }
     // [, modified.domain] = /https?:\/\/([^/\\]+)/ig.exec(unmodified.url);
     const url = new URL(unmodified.url);
-    modified.domain = url.origin.replace(/^www./ig,'');
+    modified.domain = url.origin.replace(`${url.protocol}//`, '').replace(/^www./ig, '');
     modified.stack.push(name);
     return modified;
   },
