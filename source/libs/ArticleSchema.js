@@ -10,10 +10,17 @@ module.exports = (dom) => {
   const modified = container.querySelector('[itemprop="dateModified"]');
   const published = container.querySelector('[itemprop="datePublished"]');
   return {
-    author: (author && author.textContent) || (creator && creator.textContent),
-    title: title && title.textContent,
-    description: (description && description.textContent) || (abstract && abstract.textContent),
-    created: (created && created.textContent) || (published && published.textContent),
-    modified: modified && modified.textContent,
+    author:
+      (author && author.textContent.trim())
+      || (creator && creator.textContent.trim()),
+    title: title && title.textContent.trim(),
+    description:
+      (description && description.textContent.trim())
+      || (abstract && abstract.textContent.trim()),
+    created:
+      (created && created.textContent.trim())
+      || (published && published.textContent.trim())
+      || (modified && modified.textContent.trim()),
+    modified: modified && modified.textContent.trim(),
   };
 };
