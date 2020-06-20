@@ -11,16 +11,16 @@ module.exports = (dom) => {
   const published = container.querySelector('[itemprop="datePublished"]');
   return {
     author:
-      (author && author.textContent.trim())
-      || (creator && creator.textContent.trim()),
-    title: title && title.textContent.trim(),
+      (author && author.textContent.replace(/[\r\n]+/gm, ''))
+      || (creator && creator.textContent.replace(/[\r\n]+/gm, '')),
+    title: title && title.textContent.replace(/[\r\n]+/gm, ''),
     description:
-      (description && description.textContent.trim())
-      || (abstract && abstract.textContent.trim()),
+      (description && description.textContent.replace(/[\r\n]+/gm, ''))
+      || (abstract && abstract.textContent.replace(/[\r\n]+/gm, '')),
     created:
-      (created && created.textContent.trim())
-      || (published && published.textContent.trim())
-      || (modified && modified.textContent.trim()),
-    modified: modified && modified.textContent.trim(),
+      (created && created.textContent.replace(/[\r\n]+/gm, ''))
+      || (published && published.textContent.replace(/[\r\n]+/gm, ''))
+      || (modified && modified.textContent.replace(/[\r\n]+/gm, '')),
+    modified: modified && modified.textContent.replace(/[\r\n]+/gm, ''),
   };
 };

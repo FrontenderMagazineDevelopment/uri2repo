@@ -1,6 +1,6 @@
 {
   "name": "@frontender-magazine/builder",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "build an article from url",
   "main": "source/index.js",
   "scripts": {
