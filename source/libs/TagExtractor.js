@@ -39,8 +39,8 @@ class TagExtractor {
           .match(/[\s\S]{1,3999}/g),
       }, (error, data) => {
         if (error) return reject(error);
-        const keywords = flatten(data.ResultList.map(item => (item.Entities)))
-          .map(item => (item.Text.toLowerCase()));
+        const keywords = flatten(data.ResultList.map((item) => (item.Entities)))
+          .map((item) => (item.Text.toLowerCase()));
         return resolve(
           this.filterPredefined(keywords),
         );
@@ -57,7 +57,7 @@ class TagExtractor {
           if (error) return reject(error);
           return resolve(
             this.filterPredefined(
-              file.data.keywords.map(keyword => (keyword.stem)),
+              file.data.keywords.map((keyword) => (keyword.stem)),
             ),
           );
         });
