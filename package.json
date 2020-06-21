@@ -44,7 +44,6 @@
     "@babel/plugin-proposal-optional-chaining": "^7.9.0",
     "@babel/preset-env": "^7.9.6",
     "@babel/register": "^7.9.0",
-    "@linterbook/eslint-plugin-tutorial": "0.0.0",
     "babel-eslint": "^10.1.0",
     "babel-plugin-module-resolver": "^4.0.0",
     "eslint": "^7.0.0",
@@ -55,12 +54,13 @@
     "eslint-plugin-jinojiro": "0.0.0",
     "eslint-plugin-jsx-a11y": "^6.2.3",
     "husky": "^4.2.5",
-    "lint-staged": "^10.2.2"
-  },
-  "dependencies": {
+    "lint-staged": "^10.2.2",
     "@babel/plugin-transform-runtime": "^7.9.6",
     "@babel/polyfill": "^7.8.7",
     "@babel/runtime": "^7.9.6",
+    "eslint-plugin-react": "^7.20.0"
+  },
+  "dependencies": {
     "@frontender-magazine/mercury-sdk": "^3.0.0",
     "@octokit/rest": "^17.9.0",
     "@postlight/mercury-parser": "^2.2.0",
@@ -73,7 +73,6 @@
     "detectlanguage": "^1.2.2",
     "dotenv": "^8.2.0",
     "download-file": "^0.1.5",
-    "eslint-plugin-react": "^7.20.0",
     "image-downloader": "^4.0.1",
     "image-type": "^4.1.0",
     "isomorphic-fetch": "^2.2.1",
@@ -83,7 +82,6 @@
     "open-graph-scraper": "^3.6.2",
     "path": "^0.12.7",
     "prettier": "^2.0.5",
-    "pretty": "^2.0.0",
     "puppeteer": "^3.0.4",
     "query-string": "^6.12.1",
     "rake-js": "^0.1.1",
