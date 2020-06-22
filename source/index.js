@@ -53,6 +53,7 @@ class ArticleBuilder {
       if (file.isDirectory()) {
         return this.pluginCollector(fileURI);
       }
+      if (path.extname(fileURI) !== '.js') return plugins;
       plugins.push(fileURI);
       return plugins;
     }));
@@ -135,7 +136,7 @@ module.exports = ArticleBuilder;
 //   ];
 //   try {
 //     const result = await builder.create('https://increment.com/frontend/a-users-guide-to-css-variables/');
-//     // console.log(result.schema);
+//     console.log(result.schema);
 //     // console.log(result.tags);
 //     // console.log(result.mercury[0].author);
 //     // console.log(result.openGraph);
