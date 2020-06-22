@@ -12,7 +12,8 @@
     "patch": "npm version patch && npm publish --tag latest --access public",
     "dopreminor": "npm version preminor && npm publish --tag next --access public",
     "dopremajor": "npm version premajor && npm publish --tag next --access public",
-    "doprepatch": "npm version prepatch && npm publish --tag next --access public"
+    "doprepatch": "npm version prepatch && npm publish --tag next --access public",
+    "start": "node ./source/index.js"
   },
   "repository": {
     "type": "git",
@@ -82,7 +83,6 @@
     "open-graph-scraper": "^3.6.2",
     "path": "^0.12.7",
     "prettier": "^2.0.5",
-    "puppeteer": "^3.0.4",
     "query-string": "^6.12.1",
     "rake-js": "^0.1.1",
     "read-chunk": "^3.2.0",
