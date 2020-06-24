@@ -147,54 +147,57 @@ module.exports = deepmerge(pluginBase, {
         mercury,
       },
     } = modified;
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
 
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
+      const linked = mercury.window.document.querySelectorAll('a img');
+      const DIR = path.resolve(
+        TMP_DIR_NAME,
+        slug,
+        TMP_IMAGE_DIR_NAME,
+      );
 
-    const linked = mercury.window.document.querySelectorAll('a img');
-    const DIR = path.resolve(
-      TMP_DIR_NAME,
-      slug,
-      TMP_IMAGE_DIR_NAME,
-    );
+      linked.forEach((img) => {
+        const link = img.closest('a');
+        link.before(img);
+        link.remove();
+      });
 
-    linked.forEach((img) => {
-      const link = img.closest('a');
-      link.before(img);
-      link.remove();
-    });
+      const images = mercury.window.document.querySelectorAll('img, picture source');
 
-    const images = mercury.window.document.querySelectorAll('img, picture source');
+      const downloadsList = Array.from(images).map((element) => {
+        const src = element.getAttribute('src');
+        const srcset = element.getAttribute('srcset');
+        const downloads = [];
 
-    const downloadsList = Array.from(images).map((element) => {
-      const src = element.getAttribute('src');
-      const srcset = element.getAttribute('srcset');
-      const downloads = [];
+        if (src !== null) {
+          const urls = [...new Set(getURLSFromString(src))];
+          downloads.push(urls);
+        }
+        if (srcset !== null) {
+          const urls = [...new Set(getURLSFromString(srcset))];
+          downloads.push(urls);
+        }
 
-      if (src !== null) {
-        const urls = [...new Set(getURLSFromString(src))];
-        downloads.push(urls);
-      }
-      if (srcset !== null) {
-        const urls = [...new Set(getURLSFromString(srcset))];
-        downloads.push(urls);
-      }
+        return downloads;
+      });
 
-      return downloads;
-    });
+      const list = [...new Set(flatten(downloadsList))];
+      const downloads = list.map(async (uri) => download(uri, base, DIR));
+      const names = await Promise.all(downloads);
 
-    const list = [...new Set(flatten(downloadsList))];
-    const downloads = list.map(async (uri) => download(uri, base, DIR));
-    const names = await Promise.all(downloads);
-
-    let html = mercury.window.document.documentElement.outerHTML;
-    names.forEach(({ oldName, newName }) => {
-      html = html.replace(new RegExp(oldName, 'g'), newName);
-    });
-    modified.html.mercury = html;
-    const { JSDOM } = jsdom;
-    modified.dom.mercury = new JSDOM(html);
-    modified.stack.push(name);
-    return modified;
+      let html = mercury.window.document.documentElement.outerHTML;
+      names.forEach(({ oldName, newName }) => {
+        html = html.replace(new RegExp(oldName, 'g'), newName);
+      });
+      modified.html.mercury = html;
+      const { JSDOM } = jsdom;
+      modified.dom.mercury = new JSDOM(html);
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

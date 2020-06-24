@@ -80,30 +80,34 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
 
-    const element = mercury.window.document.querySelector('body').firstChild;
-    const selector = getNodeSelector(element);
-    let container = original.window.document.querySelectorAll(selector);
-    if (container.length === 1) {
-      [modified.dom.matched] = container;
-    } else if (container.length > 0) {
-      container = Array.from(container);
-      const selectors = Array.from(element.childNodes)
-        .filter((node) => (node.nodeType === 1))
-        .map(getNodeSelector);
-      container.filter((node) => (
-        Array.from(node.childNodes)
-          .filter((child) => (child.nodeType !== Node.TEXT_NODE))
-          .find(
-            (kid) => (!selectors.includes(getNodeSelector(kid))),
-          ) === undefined));
+      const element = mercury.window.document.querySelector('body').firstChild;
+      const selector = getNodeSelector(element);
+      let container = original.window.document.querySelectorAll(selector);
       if (container.length === 1) {
         [modified.dom.matched] = container;
+      } else if (container.length > 0) {
+        container = Array.from(container);
+        const selectors = Array.from(element.childNodes)
+          .filter((node) => (node.nodeType === 1))
+          .map(getNodeSelector);
+        container.filter((node) => (
+          Array.from(node.childNodes)
+            .filter((child) => (child.nodeType !== Node.TEXT_NODE))
+            .find(
+              (kid) => (!selectors.includes(getNodeSelector(kid))),
+            ) === undefined));
+        if (container.length === 1) {
+          [modified.dom.matched] = container;
+        }
       }
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
     }
-    modified.stack.push(name);
-    return modified;
   },
 });

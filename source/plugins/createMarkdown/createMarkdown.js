@@ -63,6 +63,7 @@ module.exports = deepmerge(pluginBase, {
       },
       replacement: (content, node) => {
         let src = node.getAttribute('src');
+        if (!src) return node.outerHTML;
         const ext = src.split(/#|\?/)[0].split('.').pop().trim();
         const srcWebp = src.replace(ext, 'webp');
         const srcset = node.getAttribute('srcset');
@@ -188,20 +189,24 @@ module.exports = deepmerge(pluginBase, {
         mercury,
       },
     } = modified;
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
 
-    let markdown = convertToMD(mercury);
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
+      let markdown = convertToMD(mercury);
 
-    markdown = prettier.format(markdown, {
-      parser: 'markdown',
-      printWidth: 80,
-      tabWidth: 2,
-      useTabs: false,
-    });
+      markdown = prettier.format(markdown, {
+        parser: 'markdown',
+        printWidth: 80,
+        tabWidth: 2,
+        useTabs: false,
+      });
 
-    modified.markdown = markdown;
-    modified.stack.push(name);
-    return modified;
+      modified.markdown = markdown;
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

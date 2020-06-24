@@ -50,15 +50,19 @@ module.exports = deepmerge(pluginBase, {
         matched,
       },
     } = modified;
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
-    modified.stack.push(name);
-    if (!matched) return unmodified;
-    const mercuryCodeBlocks = mercury.window.document.querySelectorAll('pre>code');
-    const originalCodeBlocks = matched.querySelectorAll('pre>code');
-    mercuryCodeBlocks.forEach((block, index) => {
-      block.replaceWith(originalCodeBlocks[index]);
-    });
-    return modified;
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
+      modified.stack.push(name);
+      if (!matched) return unmodified;
+      const mercuryCodeBlocks = mercury.window.document.querySelectorAll('pre>code');
+      const originalCodeBlocks = matched.querySelectorAll('pre>code');
+      mercuryCodeBlocks.forEach((block, index) => {
+        block.replaceWith(originalCodeBlocks[index]);
+      });
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

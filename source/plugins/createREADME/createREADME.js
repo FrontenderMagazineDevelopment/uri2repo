@@ -53,16 +53,19 @@ module.exports = deepmerge(pluginBase, {
         excerpt,
       }],
     } = modified;
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
+      fs.writeFileSync(path.resolve(
+        TMP_DIR_NAME,
+        slug,
+        'README.md',
+      ), excerpt);
 
-    fs.writeFileSync(path.resolve(
-      TMP_DIR_NAME,
-      slug,
-      'README.md',
-    ), excerpt);
-
-    modified.stack.push(name);
-    return modified;
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

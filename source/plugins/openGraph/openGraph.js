@@ -48,57 +48,59 @@ module.exports = deepmerge(pluginBase, {
       openGraph: {},
       ...unmodified,
     };
-    dependencyCheck(stack, dependency, name);
-
-    const article = ['publisher', 'author', 'tag', 'section', 'published_time', 'modified_time'];
-    const book = ['author', 'isbn', 'release_date', 'tag'];
-    const profile = ['first_name', 'last_name', 'username', 'gender'];
-    const noVertical = {
-      article,
-      book,
-      profile,
-    };
-
-    const extended = Object.entries(noVertical).reduce((collector, [propertyName, list]) => {
-      const noVerticalInstance = list.reduce((block, content) => {
-        const element = original.window.document.querySelector(`meta[property="${propertyName}:${content}"]`);
-        if (element === null) return block;
-        return {
-          [[content]]: element.getAttribute('content'),
-          ...block,
-        };
-      }, {});
-      if (Object.keys(noVerticalInstance).length === 0) return collector;
-      return { ...collector, [[propertyName]]: noVerticalInstance };
-    }, {});
-
-    let openGraph = { ...extended };
-
-    const ogupdatedTimeElement = original.window.document.querySelector('meta[property="og:updated_time"]');
-    if (ogupdatedTimeElement !== null) {
-      const ogUpdatedTime = ogupdatedTimeElement.getAttribute('content');
-      if (ogUpdatedTime) {
-        openGraph = {
-          ...openGraph,
-          ogUpdatedTime,
-        };
-      }
-    }
 
     try {
+      dependencyCheck(stack, dependency, name);
+
+      const article = ['publisher', 'author', 'tag', 'section', 'published_time', 'modified_time'];
+      const book = ['author', 'isbn', 'release_date', 'tag'];
+      const profile = ['first_name', 'last_name', 'username', 'gender'];
+      const noVertical = {
+        article,
+        book,
+        profile,
+      };
+
+      const extended = Object.entries(noVertical).reduce((collector, [propertyName, list]) => {
+        const noVerticalInstance = list.reduce((block, content) => {
+          const element = original.window.document.querySelector(`meta[property="${propertyName}:${content}"]`);
+          if (element === null) return block;
+          return {
+            [[content]]: element.getAttribute('content'),
+            ...block,
+          };
+        }, {});
+        if (Object.keys(noVerticalInstance).length === 0) return collector;
+        return { ...collector, [[propertyName]]: noVerticalInstance };
+      }, {});
+
+      let openGraph = { ...extended };
+
+      const ogupdatedTimeElement = original.window.document.querySelector('meta[property="og:updated_time"]');
+      if (ogupdatedTimeElement !== null) {
+        const ogUpdatedTime = ogupdatedTimeElement.getAttribute('content');
+        if (ogUpdatedTime) {
+          openGraph = {
+            ...openGraph,
+            ogUpdatedTime,
+          };
+        }
+      }
+
       const data = await getOpenGraph(html.original);
       openGraph = {
         ...openGraph,
         ...data,
       };
-    // eslint-disable-next-line no-empty
-    } catch (error) {}
 
-    modified.openGraph = {
-      ...modified.openGraph,
-      ...openGraph,
-    };
-    modified.stack.push(name);
-    return modified;
+      modified.openGraph = {
+        ...modified.openGraph,
+        ...openGraph,
+      };
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

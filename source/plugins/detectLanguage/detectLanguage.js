@@ -67,8 +67,10 @@ module.exports = deepmerge(pluginBase, {
       });
 
       modified.language = language;
-    } catch (error) {}
-    modified.stack.push(name);
-    return modified;
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

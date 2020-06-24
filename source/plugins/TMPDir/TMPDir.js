@@ -51,12 +51,16 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, [...dependency, `${name}:before`]);
-    const articleDIR = path.resolve(TMP_DIR_NAME, slug);
-    rimraf.sync(articleDIR);
-    modified.stack.push(`${name}:after`);
-    return modified;
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, [...dependency, `${name}:before`]);
+      const articleDIR = path.resolve(TMP_DIR_NAME, slug);
+      rimraf.sync(articleDIR);
+      modified.stack.push(`${name}:after`);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 
   /**
@@ -87,16 +91,20 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
 
-    const articleDIR = path.resolve(TMP_DIR_NAME, slug);
-    const articleImagesDIR = path.resolve(articleDIR, TMP_IMAGE_DIR_NAME);
-    if (!fs.existsSync(TMP_DIR_NAME)) fs.mkdirSync(TMP_DIR_NAME);
-    if (!fs.existsSync(articleDIR)) fs.mkdirSync(articleDIR);
-    if (!fs.existsSync(articleImagesDIR)) fs.mkdirSync(articleImagesDIR);
+      const articleDIR = path.resolve(TMP_DIR_NAME, slug);
+      const articleImagesDIR = path.resolve(articleDIR, TMP_IMAGE_DIR_NAME);
+      if (!fs.existsSync(TMP_DIR_NAME)) fs.mkdirSync(TMP_DIR_NAME);
+      if (!fs.existsSync(articleDIR)) fs.mkdirSync(articleDIR);
+      if (!fs.existsSync(articleImagesDIR)) fs.mkdirSync(articleImagesDIR);
 
-    modified.stack.push(`${name}:before`);
-    return modified;
+      modified.stack.push(`${name}:before`);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

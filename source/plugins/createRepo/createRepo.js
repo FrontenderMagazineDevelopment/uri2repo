@@ -47,11 +47,15 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
-    const [{ title }] = mercury;
-    await gitHubUtils.createRepo(slug, title);
-    modified.stack.push(name);
-    return modified;
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
+      const [{ title }] = mercury;
+      await gitHubUtils.createRepo(slug, title);
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

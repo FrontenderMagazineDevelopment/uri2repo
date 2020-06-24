@@ -17,7 +17,7 @@ const pluginBase = require('../../libs/PluginBase');
 module.exports = deepmerge(pluginBase, {
   meta: {
     name: 'dev.to',
-    dependency: ['createMarkdown', 'domain', 'getTags'],
+    dependency: ['domain', 'getTags'],
     domain: 'dev.to',
   },
 
@@ -50,11 +50,14 @@ module.exports = deepmerge(pluginBase, {
 
     if (!domainCheck(url, domain)) return unmodified;
     dependencyCheck(stack, dependency, name);
+    try {
+      const extractedTags = [...original.window.document.querySelectorAll('.tags .tag')].map((element) => element.innerHTML).map((element) => element.slice(1));
 
-    const extractedTags = [...original.window.document.querySelectorAll('.tags .tag')].map((element) => element.innerHTML).map((element) => element.slice(1));
-
-    modified.tags = [...extractedTags, domainName];
-    modified.stack.push(name);
-    return modified;
+      modified.tags = [...extractedTags, domainName];
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

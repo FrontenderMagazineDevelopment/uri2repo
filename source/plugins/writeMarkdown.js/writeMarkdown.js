@@ -47,21 +47,26 @@ module.exports = deepmerge(pluginBase, {
     const {
       markdown,
     } = modified;
-    dependencyCheck(stack, dependency, name);
 
-    fs.writeFileSync(path.resolve(
-      TMP_DIR_NAME,
-      slug,
-      'eng.md',
-    ), markdown);
+    try {
+      dependencyCheck(stack, dependency, name);
 
-    fs.writeFileSync(path.resolve(
-      TMP_DIR_NAME,
-      slug,
-      'rus.md',
-    ), markdown);
+      fs.writeFileSync(path.resolve(
+        TMP_DIR_NAME,
+        slug,
+        'eng.md',
+      ), markdown);
 
-    modified.stack.push(name);
-    return modified;
+      fs.writeFileSync(path.resolve(
+        TMP_DIR_NAME,
+        slug,
+        'rus.md',
+      ), markdown);
+
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

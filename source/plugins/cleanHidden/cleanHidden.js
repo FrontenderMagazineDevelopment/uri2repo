@@ -49,28 +49,31 @@ module.exports = deepmerge(pluginBase, {
         mercury,
       },
     } = modified;
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
-
-    Array.from(mercury.window.document.querySelectorAll('[hidden],[style*="display:none"],[style*="display: none"]'))
-      .forEach((node) => {
-        if (node) node.parentNode.removeChild(node);
-      });
-    Array.from(mercury.window.document.querySelectorAll('[style]'))
-      .forEach((node) => {
-        if (
-          node
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
+      Array.from(mercury.window.document.querySelectorAll('[hidden],[style*="display:none"],[style*="display: none"]'))
+        .forEach((node) => {
+          if (node) node.parentNode.removeChild(node);
+        });
+      Array.from(mercury.window.document.querySelectorAll('[style]'))
+        .forEach((node) => {
+          if (
+            node
           && (
             (node.style.display === 'none')
             || (node.style.visibility === 'hidden')
             || (parseFloat(node.style.opacity) === 0)
           )
-        ) {
-          node.parentNode.removeChild(node);
-        }
-      });
+          ) {
+            node.parentNode.removeChild(node);
+          }
+        });
 
-    modified.stack.push(name);
-    return modified;
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

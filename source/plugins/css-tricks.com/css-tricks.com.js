@@ -1,6 +1,5 @@
 const deepmerge = require('deepmerge');
 const pluginBase = require('../../libs/PluginBase');
-const TagExtractor = require('../../libs/TagExtractor');
 
 /**
  * @typedef {object} PluginMeta
@@ -18,7 +17,7 @@ const TagExtractor = require('../../libs/TagExtractor');
 module.exports = deepmerge(pluginBase, {
   meta: {
     name: 'css-tricks.com',
-    dependency: ['createMarkdown', 'domain', 'getTags'],
+    dependency: ['domain', 'getTags'],
     domain: 'css-tricks.com',
   },
 
@@ -49,26 +48,26 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    const {
-      tags,
-    } = modified;
-
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
-    const tagsElements = original.window.document.querySelectorAll('.tags a');
-    if (tagsElements) {
-      const extractedTags = [...tagsElements].map((element) => element.innerHTML);
-      modified.tags = [...extractedTags, domainName];
-    } else {
-      console.log('missing tags on: ', url);
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
+      const tagsElements = original.window.document.querySelectorAll('.tags a');
+      if (tagsElements) {
+        const extractedTags = [...tagsElements].map((element) => element.innerHTML);
+        modified.tags = [...extractedTags, domainName];
+      } else {
+        console.log('missing tags on: ', url);
+      }
+      const authorElement = original.window.document.querySelector('.author-name-area .author-name');
+      if (authorElement !== null) {
+        page.author = original.window.document.querySelector('.author-name-area .author-name').innerHTML;
+      } else {
+        console.log('missing author on: ', url);
+      }
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
     }
-    const authorElement = original.window.document.querySelector('.author-name-area .author-name');
-    if (authorElement !== null) {
-      page.author = original.window.document.querySelector('.author-name-area .author-name').innerHTML;
-    } else {
-      console.log('missing author on: ', url);
-    }
-    modified.stack.push(name);
-    return modified;
   },
 });

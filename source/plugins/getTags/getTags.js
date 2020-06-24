@@ -50,11 +50,15 @@ module.exports = deepmerge(pluginBase, {
     const {
       tags,
     } = modified;
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
-    const extractedTags = await new TagExtractor(markdown);
-    modified.tags = [...tags, domainName, ...extractedTags];
-    modified.stack.push(name);
-    return modified;
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
+      const extractedTags = await new TagExtractor(markdown);
+      modified.tags = [...tags, domainName, ...extractedTags];
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

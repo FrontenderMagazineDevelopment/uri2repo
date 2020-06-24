@@ -41,31 +41,35 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (!domainCheck(unmodified.url, domain)) return unmodified;
-    dependencyCheck(unmodified.stack, dependency, name);
-    const {
-      slug,
-      url,
+    try {
+      if (!domainCheck(unmodified.url, domain)) return unmodified;
+      dependencyCheck(unmodified.stack, dependency, name);
+      const {
+        slug,
+        url,
       // mercury: [{
       //   title,
       // }],
-    } = unmodified;
-    modified.stack.push(name);
-    if (slug !== null) {
-      modified.slug = slug;
+      } = unmodified;
+      modified.stack.push(name);
+      if (slug !== null) {
+        modified.slug = slug;
+        return modified;
+      }
+      const parsed = path.parse(url);
+      const isHRU = !(parsed.base.indexOf('.') > -1);
+      const splitetURL = parsed.dir.split(/[\\/]/ig);
+      let nameSlug;
+      if (isHRU || splitetURL.length < 2) {
+        nameSlug = parsed.name;
+      } else {
+        nameSlug = splitetURL.pop();
+      }
+      modified.slug = nameSlug;
       return modified;
+    } catch (error) {
+      return unmodified;
     }
-    const parsed = path.parse(url);
-    const isHRU = !(parsed.base.indexOf('.') > -1);
-    const splitetURL = parsed.dir.split(/[\\/]/ig);
-    let nameSlug;
-    if (isHRU || splitetURL.length < 2) {
-      nameSlug = parsed.name;
-    } else {
-      nameSlug = splitetURL.pop();
-    }
-    modified.slug = nameSlug;
-    return modified;
     // @todo define when url copy is bad idea and we may use title
     // const titleSlug = title.toLowerCase().replace(/[?!;.,']+/ig, '')
     //   .replace(/[^a-z]+/ig, '-').trim();

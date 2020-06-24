@@ -18,7 +18,7 @@ const TagExtractor = require('../../libs/TagExtractor');
 module.exports = deepmerge(pluginBase, {
   meta: {
     name: 'alistapart.com',
-    dependency: ['createMarkdown', 'domain', 'getTags'],
+    dependency: ['domain', 'getTags'],
     domain: 'alistapart.com',
   },
 
@@ -52,13 +52,18 @@ module.exports = deepmerge(pluginBase, {
     const {
       tags,
     } = modified;
+    try {
+      if (!domainCheck(url, domain)) return unmodified;
+      dependencyCheck(stack, dependency, name);
 
-    if (!domainCheck(url, domain)) return unmodified;
-    dependencyCheck(stack, dependency, name);
-    const extractedTags = [...original.window.document.querySelectorAll('.cat-links a')].map((element) => element.innerHTML);
-    modified.tags = [...extractedTags, domainName];
-    page.author = original.window.document.querySelector('.author.vcard[itemprop="author"] [itemprop="name"]').innerHTML;
-    modified.stack.push(name);
-    return modified;
+
+      const extractedTags = [...original.window.document.querySelectorAll('.cat-links a')].map((element) => element.innerHTML);
+      modified.tags = [...extractedTags, domainName];
+      page.author = original.window.document.querySelector('.author.vcard[itemprop="author"] [itemprop="name"]').innerHTML;
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

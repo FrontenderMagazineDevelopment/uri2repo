@@ -43,14 +43,18 @@ module.exports = deepmerge(pluginBase, {
       domainCheck,
       dependencyCheck,
     } = module.exports;
-    if (!domainCheck(unmodified.url, domain)) return unmodified;
-    dependencyCheck(unmodified.stack, dependency, name);
-    const response = await fetch(unmodified.url);
-    if (!response.ok) throw new Error(`${name}: can't fetch resource.`);
-    const { JSDOM } = jsdom;
-    modified.html.original = await response.text();
-    modified.dom.original = new JSDOM(modified.html.original);
-    modified.stack.push(name);
-    return modified;
+    try {
+      if (!domainCheck(unmodified.url, domain)) return unmodified;
+      dependencyCheck(unmodified.stack, dependency, name);
+      const response = await fetch(unmodified.url);
+      if (!response.ok) throw new Error(`${name}: can't fetch resource.`);
+      const { JSDOM } = jsdom;
+      modified.html.original = await response.text();
+      modified.dom.original = new JSDOM(modified.html.original);
+      modified.stack.push(name);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });

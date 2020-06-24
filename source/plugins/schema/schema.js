@@ -41,13 +41,17 @@ module.exports = deepmerge(pluginBase, {
       stack: [],
       ...unmodified,
     };
-    if (!domainCheck(unmodified.url, domain)) return unmodified;
-    dependencyCheck(unmodified.stack, dependency, name);
-    const {
-      dom: { original },
-    } = unmodified;
-    modified.stack.push(name);
-    modified.schema = articleSchema(original);
-    return modified;
+    try {
+      if (!domainCheck(unmodified.url, domain)) return unmodified;
+      dependencyCheck(unmodified.stack, dependency, name);
+      const {
+        dom: { original },
+      } = unmodified;
+      modified.stack.push(name);
+      modified.schema = articleSchema(original);
+      return modified;
+    } catch (error) {
+      return unmodified;
+    }
   },
 });
