@@ -62,6 +62,7 @@ module.exports = deepmerge(pluginBase, {
       });
       return modified;
     } catch (error) {
+      console.log(error);
       return unmodified;
     }
   },

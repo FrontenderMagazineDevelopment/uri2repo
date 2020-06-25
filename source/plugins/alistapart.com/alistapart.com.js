@@ -63,6 +63,7 @@ module.exports = deepmerge(pluginBase, {
       modified.stack.push(name);
       return modified;
     } catch (error) {
+      console.log(error);
       return unmodified;
     }
   },

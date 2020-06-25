@@ -68,6 +68,7 @@ module.exports = deepmerge(pluginBase, {
       modified.slug = nameSlug;
       return modified;
     } catch (error) {
+      console.log(error);
       return unmodified;
     }
     // @todo define when url copy is bad idea and we may use title

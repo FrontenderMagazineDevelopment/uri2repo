@@ -51,6 +51,7 @@ module.exports = deepmerge(pluginBase, {
       modified.schema = articleSchema(original);
       return modified;
     } catch (error) {
+      console.log(error);
       return unmodified;
     }
   },
